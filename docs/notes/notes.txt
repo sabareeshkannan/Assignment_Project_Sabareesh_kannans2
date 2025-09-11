@@ -1,0 +1,8 @@
+# Ideas & Selection Rationale
+
+Assignment Project
+- Idea 1: MealPrepped — Weekly meal planner, shopping list, expiry reminders, overall spending and current inventory dashboard, and a small "what to cook next" recommender.
+- Idea 2: Health and Fitness Tracker — Track workouts, set goals, monitor progress.
+
+Chosen: MealPrepped  
+Reason: It solves a real pain point for me and is easy to test in daily life. The app naturally supports CRUD operations, dashboards, and a small ML recommender feature, which I find technically interesting as well.
