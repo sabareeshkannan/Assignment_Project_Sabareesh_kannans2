@@ -69,3 +69,12 @@ Doing it in this order helps me build from the basics (data) up to the overview 
 Each feature gets its own branch so I would not mess up main while I am still working.
 Once a feature is ready, I will merge it into main and move on to the next one.
 
+
+# Django Setup
+
+startproject folder_name: main
+I chose “main” so it is simple and clearly shows this is the main project folder with all the settings and configuration.
+
+app_name: mealprepped
+I chose “mealprepped” because the app is about planning meals, managing recipes, and keeping track of inventory. The name matches the goal of the project and makes it obvious what the app does.
+
