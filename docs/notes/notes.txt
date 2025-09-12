@@ -15,6 +15,7 @@ I have designed a rough sketch of the main pages of the website.
 The website's main page would be the dashboard, which will serve as a glance of the meal prep progress for the week. 
 This is also a navigation bar at the top, so that it would be easy to jump between sections. 
 
+
 2) Weekly Plan 
 There are sections for lunch and dinner for each day, as breakfast would usually not require a plan.
 You are able to easily add meal or generate a new shopping list if necessary, especially if the previous dashboard says that you are running out of certain items that you have planned to make in the subsequent days. 
@@ -25,7 +26,14 @@ There is also a section for notes, just in case there are leftovers.
 Card layout makes scanning quick, and easy for the user to click and expand for the full recipe. 
 Search and simple filters live above the grid to easily find a favourite recipe. (add an additional filter for this)
 
+
 4) Inventory
 A straightforward table (name, qty, unit, expiry).
 “Expiring soon” and “Low stock” are broken out on the side to bring attention to the user.
 Sorting by Expiry/Qty supports the two most common decisions: use it now or restock.
+
+
+# Branch Usage Reflections 
+
+I made a wf/v1 branch just for my wireframes so they would not mix with the rest of the project. It was easier to keep things organised this way, and then I merged it back into main once I was done.
+
