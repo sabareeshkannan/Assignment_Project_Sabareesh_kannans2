@@ -37,3 +37,8 @@ Sorting by Expiry/Qty supports the two most common decisions: use it now or rest
 
 I made a wf/v1 branch just for my wireframes so they would not mix with the rest of the project. It was easier to keep things organised this way, and then I merged it back into main once I was done.
 
+
+# Branching Strategy
+
+I kept the branching plan very simple so I can build one feature at a time and not break main.
+
