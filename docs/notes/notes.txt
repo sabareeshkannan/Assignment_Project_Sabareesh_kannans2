@@ -42,3 +42,30 @@ I made a wf/v1 branch just for my wireframes so they would not mix with the rest
 
 I kept the branching plan very simple so I can build one feature at a time and not break main.
 
+
+1) models
+   - Start with the data models and Django admin because everything else depends on them.
+
+2) planner
+The weekly planner is the core of the app, so I want to get that working next.
+A basic 7-day grid with lunch/dinner slots will let me connect recipes later.
+
+3) recipes-list
+After the planner is ready, I will add the recipe list with search and filters.
+This supports the planner because I can add recipes directly to the plan.
+
+4) inventory/shopping list
+Then I will build the inventory page with quantities and expiry dates.
+This gives me the data needed for reminders and for the dashboard.
+
+5) dashboard
+I will add the dashboard that pulls info from the other three features.
+I left this last since it depends on planner, recipes, and inventory.
+
+6) ml-recommender
+Finally I will add a machine learning recommender later to suggest “what to cook next.”
+
+Doing it in this order helps me build from the basics (data) up to the overview (dashboard).
+Each feature gets its own branch so I would not mess up main while I am still working.
+Once a feature is ready, I will merge it into main and move on to the next one.
+
