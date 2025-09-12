@@ -78,3 +78,12 @@ I chose “main” so it is simple and clearly shows this is the main project fo
 app_name: mealprepped
 I chose “mealprepped” because the app is about planning meals, managing recipes, and keeping track of inventory. The name matches the goal of the project and makes it obvious what the app does.
 
+
+
+# Virtual Environment Choices
+
+I used Python venv inside my project folder (.venv).  
+Keeping the virtual environment in the same folder makes it easy to find and connect in PyCharm.  
+It also keeps all the project packages separate from my global Python so no error occurs as a result of this.
+
+
