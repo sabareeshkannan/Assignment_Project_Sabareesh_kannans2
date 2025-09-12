@@ -6,3 +6,26 @@ Assignment Project
 
 Chosen: MealPrepped  
 Reason: It solves a real pain point for me and is easy to test in daily life. The app naturally supports CRUD operations, dashboards, and a small ML recommender feature, which I find technically interesting as well.
+
+
+# Wireframe notes
+I have designed a rough sketch of the main pages of the website.
+
+1) Dashboard
+The website's main page would be the dashboard, which will serve as a glance of the meal prep progress for the week. 
+This is also a navigation bar at the top, so that it would be easy to jump between sections. 
+
+2) Weekly Plan 
+There are sections for lunch and dinner for each day, as breakfast would usually not require a plan.
+You are able to easily add meal or generate a new shopping list if necessary, especially if the previous dashboard says that you are running out of certain items that you have planned to make in the subsequent days. 
+There is also a section for notes, just in case there are leftovers.
+
+
+3) Recipes List
+Card layout makes scanning quick, and easy for the user to click and expand for the full recipe. 
+Search and simple filters live above the grid to easily find a favourite recipe. (add an additional filter for this)
+
+4) Inventory
+A straightforward table (name, qty, unit, expiry).
+“Expiring soon” and “Low stock” are broken out on the side to bring attention to the user.
+Sorting by Expiry/Qty supports the two most common decisions: use it now or restock.
