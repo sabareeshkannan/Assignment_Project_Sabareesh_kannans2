@@ -87,3 +87,7 @@ Keeping the virtual environment in the same folder makes it easy to find and con
 It also keeps all the project packages separate from my global Python so no error occurs as a result of this.
 
 
+#Extra Credit
+
+In a team, git stash is like putting your half-done work into a safe drawer so you can help with something else. If your teammate asks you to fix a bug on main, you run git stash command switch to main, pull, make the fix, commit and push. Then you are able to switch back to your branch and bring your saved work back. This keeps unfinished code out of the shared history and lets you switch tasks without losing anything. 
+
