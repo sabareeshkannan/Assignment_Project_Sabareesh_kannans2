@@ -87,7 +87,53 @@ Keeping the virtual environment in the same folder makes it easy to find and con
 It also keeps all the project packages separate from my global Python so no error occurs as a result of this.
 
 
-#Extra Credit
+# Extra Credit
 
 In a team, git stash is like putting your half-done work into a safe drawer so you can help with something else. If your teammate asks you to fix a bug on main, you run git stash command switch to main, pull, make the fix, commit and push. Then you are able to switch back to your branch and bring your saved work back. This keeps unfinished code out of the shared history and lets you switch tasks without losing anything. 
 
+
+# Modelling notes
+
+1) Why these models/fields?
+Ingredient: Simple catalog of things you cook with, which stores the name and a unit (g/ml/pcs). 
+Recipe: Overall dish overview with title, optional description, servings, and prep/cook minutes.
+RecipeIngredient: This contains the quantity per ingredient per recipe. line-item “payload” table (quantity per ingredient per recipe). This allows me to model many-many data.
+MealPlan: A date range (usually should be a week) that groups entries. This would allow me to add additional features such as a dashboard for budgeting and provide a weekly view of it. 
+MealPlanEntry: One slot for different periods of the day (breakfast/lunch/dinner/snack). The slot will usually refer a recipe, but would still hold if that particular recipe is deleted. 
+
+2) Relationship choices
+RecipeIngredient.recipe - ForeignKey(CASCADE): Deleting a recipe should delete its items.
+RecipeIngredient.ingredient - ForeignKey(PROTECT): Deleting would be blocked if any recipes use it.
+MealPlanEntry.meal_plan - ForeignKey(CASCADE): Removing a plan removes its entries.
+MealPlanEntry.recipe  ForeignKey(SET_NULL): Keep the slot if a recipe goes away (slot becomes “TBD”).
+
+3) Constraints 
+- Uniqueness:
+  - RecipeIngredient: Unique (recipe, ingredient) — No duplicate ingredient rows in a recipe.
+  - MealPlanEntry: Unique (meal_plan, date, meal_type) — No double-booking the same slot.
+  
+- Ordering:
+	- Ingredient -> name (Potentially to be changed to be ordered by quantity)
+	- Recipe -> Title
+	- RecipeIngredient -> Recipe then ingredient
+	- MealPlan -> By earliest start date first, then name
+	- MealPlanEntry -> Date, meal_type
+  
+
+4) How did I seed the test data?
+Initially, I manually added the entries through the admin portal. However, I discovered that creating entries through the shell terminal was faster. 
+I used the shell terminal to create 3 receipes to cover the periods of the day, each with 2 to 4 ingredients (8 total ingredients).
+Additionally, I created a MealPlan for the current week, with a few MealPlanEntry rows.
+  
+  
+  
+5) Checklist for A3: 
+1. Define models with fields, PKs, FKs (+ on_delete choices).
+2. Add at least one UniqueConstraint and Meta.ordering.
+3. makemigrations → migrate.
+4. Register models in admin.py; createsuperuser.
+5. Add test data via Admin / shell.
+6. Verify FK behavior (try deleting a parent to see PROTECT/CASCADE).
+7. Commit + push after each milestone (models, migrations, admin, data). 
+8. Update README + docs/notes/notes.txt. 
+9. Upload db.sqlite3 on Canvas.
