@@ -1,10 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Recipes — MealPrepped{% endblock %}
+{% block content %}
+  <h2>Recipes</h2>
+  <ul>
+    {% for r in recipes %}
+      <li>
+        <strong>{{ r.title }}</strong>
+        — Servings: {{ r.servings }}
+        — Prep {{ r.prep_minutes }}m / Cook {{ r.cook_minutes }}m
+      </li>
+    {% empty %}
+      <li>No recipes yet. Add some in Admin → Recipes.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}
