@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}This Week — MealPrepped{% endblock %}
+{% block content %}
+  <h2>Week Plan ({{ start }} → {{ end }})</h2>
+  <ul>
+    {% for e in entries %}
+      <li>
+        {{ e.date }} — {{ e.meal_type|title }}
+        {% if e.recipe %}→ <strong>{{ e.recipe.title }}</strong>{% else %}→ <em>TBD</em>{% endif %}
+        <span style="color:#666">({{ e.meal_plan.name }})</span>
+      </li>
+    {% empty %}
+      <li>No entries for this week yet.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}
