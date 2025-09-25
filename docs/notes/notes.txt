@@ -126,7 +126,6 @@ I used the shell terminal to create 3 receipes to cover the periods of the day, 
 Additionally, I created a MealPlan for the current week, with a few MealPlanEntry rows.
   
   
-  
 5) Checklist for A3: 
 1. Define models with fields, PKs, FKs (+ on_delete choices).
 2. Add at least one UniqueConstraint and Meta.ordering.
@@ -137,3 +136,16 @@ Additionally, I created a MealPlan for the current week, with a few MealPlanEntr
 7. Commit + push after each milestone (models, migrations, admin, data). 
 8. Update README + docs/notes/notes.txt. 
 9. Upload db.sqlite3 on Canvas.
+
+# MVT Notes (A4) 
+I implemented two view styles to compare HttpResponse with render(). 
+Doing them on separate pages (Ingredients vs. Recipes) makes the contrast clearer while keeping the same flow
+From my experience, I felt that the render() function does the "heavy lifting", by loading the template, merging the context and returning a response all in one line, making it harder to make mistakes on. 
+
+Difference between HttpResponse and render(): 
+HttpResponse is typically used to send back simple content such as plain text, as it allows you to define the string that is displayed as the content.
+render() is a more convenient way of handling the loading of the template and merging the data in one step, returning a response with the HTML already rendered. 
+
+URL/template decisions: I used separate routes for each —/ingredients-list/, /recipes-list/, /plan/week/—and a base.html layout with {% block title %}/{% block content %}.
+I decided to create an additional a subroute for the weekly meal plan (stored in the plan folder by weeks) , as it would be easier to navigate to each seperate meal plan by week, just by altering the date. I plan to implement this in the future. 
+The recipes template includes a {% empty %} block to handle and indicate to the user that there are no recipe records.
