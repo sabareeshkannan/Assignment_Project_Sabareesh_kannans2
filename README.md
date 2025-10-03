@@ -22,3 +22,21 @@ I added three views, *Ingredients* (HttpResponse), *Recipes*  and *This Week’s
 - `/plan/week/`
 
 This demonstrates the full Django flow (request → view → template → response) and shows why `render()` is my default for normal pages, while `HttpResponse` is for simple outputs. I also added a `base.html` file to make use of the template inheritance property.
+
+### Class-Based Views & Refactoring
+
+Implemented four CBVs and refactored URLs for modularity.
+
+- **Base CBVs** (`View`): `MealPlanDetailView`, `IngredientDetailView`
+- **Generic CBVs**: `MealPlanListView` , `RecipeDetailView` 
+- Refactored project `urls.py` to only `admin/` and `include('mealprepped.urls')`
+- Namespaced app URLs (`app_name = "mealprepped"`)
+- Templates use `base.html`, `{% for %} ... {% empty %}`, and show ingredient quantity with unit
+
+**Routes to test**
+- `/mealplans/` generic list
+- `/mealplans/<id>/` base detail
+- `/ingredients/<id>/` base detail
+- `/recipes/<id>/` generic detail (with ingredients)
+
+
