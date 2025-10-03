@@ -149,3 +149,14 @@ render() is a more convenient way of handling the loading of the template and me
 URL/template decisions: I used separate routes for each —/ingredients-list/, /recipes-list/, /plan/week/—and a base.html layout with {% block title %}/{% block content %}.
 I decided to create an additional a subroute for the weekly meal plan (stored in the plan folder by weeks) , as it would be easier to navigate to each seperate meal plan by week, just by altering the date. I plan to implement this in the future. 
 The recipes template includes a {% empty %} block to handle and indicate to the user that there are no recipe records.
+
+#Class-based views notes (A5)
+Base CBVs vs Generic CBVs
+Base CBVs inherit from View. I implement get(), query the model explicitly, and call render() with a context I build. This gives me full control but more boilerplate.
+Generic CBVs (ListView, DetailView) provide standard behaviour out of the box. I set attributes like model=Recipe, context_object_name="recipes", and optionally template_name. Django is able to handle the rest.
+
+Why generic views reduce boilerplate
+They are able to handle common patterns out of the box, making them easy to use, as there are fewer lines of code to maintain.
+
+Why refactoring URLs helps maintainability
+Keeping app routes in mealprepped/urls.py and including them once in the project urls.py keeps the project root clean and modular. It also prevents name clashes between apps.
