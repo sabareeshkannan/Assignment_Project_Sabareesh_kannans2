@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Ingredient{% endblock %}
+{% block content %}
+  <h2>{{ ingredient.name }}</h2>
+  <h3>Used in recipes</h3>
+  <ul>
+    {% for r in recipes %}
+      <li><a href="{% url 'mealprepped:recipe_detail' r.pk %}">{{ r.title }}</a></li>
+    {% empty %}
+      <li>No recipes use this ingredient.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

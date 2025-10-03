@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Meal plans{% endblock %}
+{% block content %}
+  <h2>Meal plans</h2>
+  <ul>
+    {% for mp in mealplans %}
+      <li>
+        <a href="{% url 'mealprepped:mealplan_detail' mp.pk %}">
+          {{ mp.name }} ({{ mp.start_date }} → {{ mp.end_date }})
+        </a>
+      </li>
+    {% empty %}
+      <li>No meal plans yet.</li>
+    {% endfor %}
+  </ul>
+
+  {% if is_paginated %}
+    <p>
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+      Page {{ page_obj.number }} of {{ paginator.num_pages }}
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+    </p>
+  {% endif %}
+{% endblock %}

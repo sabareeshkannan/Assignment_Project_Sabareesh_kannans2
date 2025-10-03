@@ -5,7 +5,9 @@
   <ul>
     {% for r in recipes %}
       <li>
-        <strong>{{ r.title }}</strong>
+        <a href="{% url 'mealprepped:recipe_detail' r.pk %}">
+          <strong>{{ r.title }}</strong>
+        </a>
         — Servings: {{ r.servings }}
         — Prep {{ r.prep_minutes }}m / Cook {{ r.cook_minutes }}m
       </li>

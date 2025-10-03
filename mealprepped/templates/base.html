@@ -4,9 +4,16 @@
   <meta charset="utf-8">
   <title>{% block title %}MealPrepped{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
+</ head>
 <body>
-  <h1>MealPrepped</h1>
+  <h1><a href="{% url 'mealprepped:mealplans_list' %}">MealPrepped</a></h1>
+
+  <nav>
+    <a href="{% url 'mealprepped:mealplans_list' %}">Meal plans</a> |
+    <a href="{% url 'mealprepped:ingredients_list' %}">Ingredients</a> |
+    <a href="{% url 'mealprepped:recipes_list' %}">Recipes</a>
+  </nav>
+
   <hr>
   {% block content %}{% endblock %}
 </body>
