@@ -2,12 +2,28 @@
 {% block title %}Recipes — MealPrepped{% endblock %}
 {% block content %}
   <h2>Recipes</h2>
+
+  <form method="get">
+    <input type="search" name="q" value="{{ q }}" placeholder="Name or description…">
+    <button type="submit">Search</button>
+  </form>
+
+{% if q %}
+  <p><em>{{ results_count }} result{% if results_count != 1 %}s{% endif %} for “{{ q }}”.</em></p>
+  <ul>
+    {% for r in search_results %}
+      <li><a href="{% url 'mealprepped:recipe_detail' r.pk %}">{{ r.title }}</a></li>
+    {% empty %}
+      <li class="text-muted">No recipes matched “{{ q }}”.</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+  <hr>
   <ul>
     {% for r in recipes %}
       <li>
-        <a href="{% url 'mealprepped:recipe_detail' r.pk %}">
-          <strong>{{ r.title }}</strong>
-        </a>
+        <a href="{% url 'mealprepped:recipe_detail' r.pk %}"><strong>{{ r.title }}</strong></a>
         — Servings: {{ r.servings }}
         — Prep {{ r.prep_minutes }}m / Cook {{ r.cook_minutes }}m
       </li>
@@ -15,4 +31,32 @@
       <li>No recipes yet. Add some in Admin → Recipes.</li>
     {% endfor %}
   </ul>
+
+  <hr>
+    <p><strong>Total recipes:</strong> {{ total_recipes }}</p>
+
+  <h4>Most used recipes (in meal plans)</h4>
+  <ul>
+    {% for row in top_used_recipes %}
+      <li>
+        <a href="{% url 'mealprepped:recipe_detail' row.recipe__pk %}">{{ row.recipe__title }}</a>
+        — {{ row.n_uses }}
+      </li>
+    {% empty %}
+      <li>No usage yet.</li>
+    {% endfor %}
+  </ul>
+
+    <h4>Recipes by ingredient count</h4>
+<ul>
+  {% for row in recipes_by_ingredient_count %}
+    <li>
+      <a href="{% url 'mealprepped:recipe_detail' row.recipe__pk %}">{{ row.recipe__title }}</a>
+      — {{ row.n_ings }} ingredients
+    </li>
+  {% empty %}<li>No data yet.</li>{% endfor %}
+</ul>
+
 {% endblock %}
+
+
