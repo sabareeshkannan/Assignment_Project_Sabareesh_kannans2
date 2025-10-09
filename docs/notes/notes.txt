@@ -160,3 +160,12 @@ They are able to handle common patterns out of the box, making them easy to use,
 
 Why refactoring URLs helps maintainability
 Keeping app routes in mealprepped/urls.py and including them once in the project urls.py keeps the project root clean and modular. It also prevents name clashes between apps.
+
+# Filtering & Aggregation (A6)
+Filtering vs. aggregation: Filtering identifies the records which matches the search, while aggregation summarises the data across the selected rows, for example by finding the total of a certain grouped count.
+Search flow: read `q = request.GET.get("q")`, filter `Recipe` with `Q(title__icontains=q) | Q(description__icontains=q)`, keep full list (`recipes`) separate from `search_results` in `get_context_data` 
+The template uses `{% empty %}` in the search results loop to show “No recipes matched…” when `search_results` is empty.
+Aggregation list: 
+Total: `Recipe.objects.count()` -> displays “Total recipes”.
+Most-used recipes in meal plans are also computed and linked to each recipe's detail page.
+Recipes by ingredient count, ranking dishes by number of ingredients (simple to complex).
