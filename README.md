@@ -39,4 +39,13 @@ Implemented four CBVs and refactored URLs for modularity.
 - `/ingredients/<id>/` base detail
 - `/recipes/<id>/` generic detail (with ingredients)
 
+### Search & Aggregations
+
+- **RecipeListView (ListView)**: Search over `title`/`description` with `{% for %}…{% empty %}` for the no-results case.  
+- **Stats**: Total recipes, **Most-used recipes** , and **Recipes by ingredient count**   
+
+
+
+
+
 
