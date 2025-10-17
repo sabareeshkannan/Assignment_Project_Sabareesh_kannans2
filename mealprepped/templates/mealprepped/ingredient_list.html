@@ -1,12 +1,34 @@
 {% extends "base.html" %}
 {% block title %}Ingredients — MealPrepped{% endblock %}
+{% block page_title %}Ingredients{% endblock %}
+{% block page_subtitle %}All the ingredients currently in the database.{% endblock %}
+
 {% block content %}
-  <h2>Ingredients</h2>
-  <ul>
-    {% for i in ingredients %}
-      <li>{{ i.name }} ({{ i.unit }})</li>
-    {% empty %}
-      <li>No ingredients yet. Add some in Admin → Ingredients.</li>
-    {% endfor %}
-  </ul>
+    {% if ingredients %}
+        <div class="card card-accent">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Unit</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for i in ingredients %}
+                        <tr>
+                            <td>{{ i.name }}</td>
+                            <td class="text-muted">{{ i.unit }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="sheet p-5 text-center">
+            <h2 class="h5 mb-2">No ingredients yet</h2>
+            <p class="text-muted mb-0">Add some in Admin → Ingredients.</p>
+        </div>
+    {% endif %}
 {% endblock %}

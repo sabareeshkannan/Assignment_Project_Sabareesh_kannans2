@@ -1,13 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Ingredient{% endblock %}
+{% block title %}Ingredient — {{ ingredient.name }}{% endblock %}
+{% block page_title %}{{ ingredient.name }}{% endblock %}
+{% block page_subtitle %}Used in {{ recipes|length }} recipe{{ recipes|length|pluralize }}{% endblock %}
+
 {% block content %}
-  <h2>{{ ingredient.name }}</h2>
-  <h3>Used in recipes</h3>
-  <ul>
-    {% for r in recipes %}
-      <li><a href="{% url 'mealprepped:recipe_detail' r.pk %}">{{ r.title }}</a></li>
-    {% empty %}
-      <li>No recipes use this ingredient.</li>
-    {% endfor %}
-  </ul>
+    <section>
+        <h3 class="h6 mb-3">Used in recipes</h3>
+        {% if recipes %}
+            <ul class="list-group list-group-flush">
+                {% for r in recipes %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <a href="{% url 'mealprepped:recipe_detail' r.pk %}" class="link-primary">{{ r.title }}</a>
+                        <span class="material-symbols-rounded text-muted" aria-hidden="true">chevron_right</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="sheet p-4 text-center text-muted">No recipes use this ingredient.</div>
+        {% endif %}
+    </section>
 {% endblock %}
