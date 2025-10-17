@@ -163,9 +163,22 @@ Keeping app routes in mealprepped/urls.py and including them once in the project
 
 # Filtering & Aggregation (A6)
 Filtering vs. aggregation: Filtering identifies the records which matches the search, while aggregation summarises the data across the selected rows, for example by finding the total of a certain grouped count.
+
 Search flow: read `q = request.GET.get("q")`, filter `Recipe` with `Q(title__icontains=q) | Q(description__icontains=q)`, keep full list (`recipes`) separate from `search_results` in `get_context_data` 
+
 The template uses `{% empty %}` in the search results loop to show “No recipes matched…” when `search_results` is empty.
+
 Aggregation list: 
 Total: `Recipe.objects.count()` -> displays “Total recipes”.
 Most-used recipes in meal plans are also computed and linked to each recipe's detail page.
 Recipes by ingredient count, ranking dishes by number of ingredients (simple to complex).
+
+# Static files + Chart (A7)
+How do static files work? I placed CSS under app_name/static/app_name/css and linked them in base.html with {% load static %} and <link rel="stylesheet" href="{% static '...' %}">. STATIC_URL/STATICFILES_DIRS let Django find these assets in development.
+
+What does my chart show? A simple bar chart of recipe counts by total time (prep + cook), using four fixed intervals up to 60 minutes (≤15, 16–30, 31–45, 46–60). This gives a quick sense of how long most recipes would take to cook.
+
+What ORM aggregation was used? I annotatd each recipe with total = prep_minutes + cook_minutes, then use Count with the filter method to compute how many recipes fall in each time interval.
+
+BytesIO: It helps to save Matplotlib plot png file to BytesIO (as PNG) and returns it in an HttpResponse without writing any files to diskm and therefore not taking up space in your local disk.
+tight_layout(): It is a helper method that adjusts margins so titles, axes, and labels are not misaligned
