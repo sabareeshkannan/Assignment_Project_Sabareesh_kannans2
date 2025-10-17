@@ -1,20 +1,85 @@
-<!doctype html>
-<html>
+{% load static %}
 <head>
-  <meta charset="utf-8">
-  <title>{% block title %}MealPrepped{% endblock %}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-</ head>
-<body>
-  <h1><a href="{% url 'mealprepped:mealplans_list' %}">MealPrepped</a></h1>
+    <meta charset="utf-8">
+    <title>{% block title %}MealPrepped{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <nav>
-    <a href="{% url 'mealprepped:mealplans_list' %}">Meal plans</a> |
-    <a href="{% url 'mealprepped:ingredients_list' %}">Ingredients</a> |
-    <a href="{% url 'mealprepped:recipes_list' %}">Recipes</a>
-  </nav>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
 
-  <hr>
-  {% block content %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'mealprepped/../mealprepped/normalize.css' %}">
+    <link rel="stylesheet" href="{% static 'mealprepped/../mealprepped/skeleton.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.min.css"/>
+    <link rel="stylesheet" href="{% static 'mealprepped/../mealprepped/style.css' %}?v={{ now|date:'U' }}">
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+
+<body class="bg-soft">
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg my-navbar">
+    <div class="container container-narrow">
+        <a class="navbar-brand fw-semibold" href="{% url 'mealprepped:mealplans_list' %}">MealPrepped</a>
+
+        <button class="navbar-toggler" type="button"
+                data-mdb-collapse-init data-mdb-target="#topnav"
+                aria-controls="topnav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="material-symbols-rounded" aria-hidden="true">menu</span>
+        </button>
+
+        <div id="topnav" class="collapse navbar-collapse">
+            {% with current=request.resolver_match.url_name %}
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if current == 'mealplans_list' %}active{% endif %}"
+                           {% if current == 'mealplans_list' %}aria-current="page"{% endif %}
+                           href="{% url 'mealprepped:mealplans_list' %}">Meal plans</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if current == 'ingredients_list' %}active{% endif %}"
+                           {% if current == 'ingredients_list' %}aria-current="page"{% endif %}
+                           href="{% url 'mealprepped:ingredients_list' %}">Ingredients</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if current == 'recipes_list' %}active{% endif %}"
+                           {% if current == 'recipes_list' %}aria-current="page"{% endif %}
+                           href="{% url 'mealprepped:recipes_list' %}">Recipes</a>
+                    </li>
+                </ul>
+            {% endwith %}
+        </div>
+    </div>
+</nav>
+
+<!-- Hero -->
+<header class="app-hero">
+    <div class="container container-narrow">
+        <div class="sheet p-4 p-md-5">
+            <h1 class="headline mb-2">{% block page_title %}Plan smarter. Cook better.{% endblock %}</h1>
+            <p class="subtext mb-0">{% block page_subtitle %}Browse recipes, build meal plans, and keep your ingredients
+                tidy — all in one place.{% endblock %}</p>
+        </div>
+    </div>
+</header>
+
+<!-- Main -->
+<main id="main" class="container container-narrow py-4">
+    {% block content %}{% endblock %}
+</main>
+
+<!-- Footer -->
+<footer class="mt-4">
+    <div class="container container-narrow">
+        <div class="sheet p-4 text-muted small d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>© {{ now|default:None|date:"Y" }} MealPrepped</span>
+            <a class="link-secondary" href="#" onclick="window.scrollTo({top:0,behavior:'smooth'})">Back to top</a>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.min.js"></script>
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>
