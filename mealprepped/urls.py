@@ -1,7 +1,7 @@
 # mealprepped/urls.py
 from django.urls import path
 from .views import ingredient_list, week_entries, IngredientDetailView, MealPlanDetailView, \
-    MealPlanListView, RecipeDetailView, RecipeListView
+    MealPlanListView, RecipeDetailView, RecipeListView, total_time_chart
 
 app_name = "mealprepped"
 
@@ -14,4 +14,5 @@ urlpatterns = [
     path("mealplans-list/", MealPlanListView.as_view(), name="mealplans_list"),
     path("recipe/<int:pk>/", RecipeDetailView.as_view(), name="recipe_detail"),
     path("ingredient/<int:pk>/", IngredientDetailView.as_view(), name="ingredient_detail"),
+    path("charts/total-time.json", total_time_chart, name="total_time_chart"),
 ]

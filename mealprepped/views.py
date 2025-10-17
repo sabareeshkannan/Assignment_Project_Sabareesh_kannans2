@@ -2,14 +2,16 @@
 
 from datetime import date, timedelta
 
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.template import loader
 from django.shortcuts import render, get_object_or_404
 from django.views import View
 from django.views.generic import ListView, DetailView
 
 from .models import Ingredient, Recipe, MealPlan, MealPlanEntry, RecipeIngredient
-from django.db.models import Count, Q
+from django.db.models import Count, Q, F, IntegerField, ExpressionWrapper
+import matplotlib
+matplotlib.use("Agg")
 
 
 # 1) Ingredient list
@@ -19,15 +21,6 @@ def ingredient_list(request):
     output = template.render({"ingredients": ingredients}, request)
     return HttpResponse(output)
 
-
-# 2) Recipes
-# def recipe_list(request):
-#     recipes = Recipe.objects.all().order_by("title")
-#     return render(
-#         request,
-#         "mealprepped/recipe_list.html",
-#         {"recipes": recipes},
-#     )
 
 class RecipeListView(ListView):
     model = Recipe
@@ -51,7 +44,7 @@ class RecipeListView(ListView):
         ctx["total_recipes"] = Recipe.objects.count()
 
         ctx["top_used_recipes"] = (
-            MealPlanEntry.objects
+            MealPlanEntry.objects.filter(recipe__isnull=False)
             .values("recipe__pk", "recipe__title")
             .annotate(n_uses=Count("pk"))
             .order_by("-n_uses", "recipe__title")
@@ -66,6 +59,52 @@ class RecipeListView(ListView):
 
         return ctx
 
+def total_time_chart(request):
+    data = Recipe.objects.annotate(total=F("prep_minutes") + F("cook_minutes"))
+
+    agg = data.aggregate(
+        le15   = Count("pk", filter=Q(total__lte=15)),
+        m16_30 = Count("pk", filter=Q(total__gt=15, total__lte=30)),
+        m31_45 = Count("pk", filter=Q(total__gt=30, total__lte=45)),
+        m46_60 = Count("pk", filter=Q(total__gt=45, total__lte=60)),
+    )
+
+    labels = ["≤15m", "16–30m", "31–45m", "46–60m"]
+    counts = [
+        agg.get("le15")   or 0,
+        agg.get("m16_30") or 0,
+        agg.get("m31_45") or 0,
+        agg.get("m46_60") or 0,
+    ]
+
+    def titles(lo, hi, limit=12):
+        qs = (data.filter(total__gte=lo, total__lte=hi)
+                .values_list("title", flat=True)
+                .order_by("title"))
+        shown = list(qs[:limit])
+        more = max(0, qs.count() - len(shown))
+        return "<br>".join(shown) + (f"<br>+{more} more" if more else "") if shown else "No recipes"
+
+    hover_texts = [titles(0,15), titles(16,30), titles(31,45), titles(46,60)]
+
+    fig = {
+        "data": [{
+            "type": "bar",
+            "x": labels,
+            "y": counts,
+            "marker": {"color": "#0e67b6"},
+            "customdata": hover_texts,
+            "hovertemplate": "%{x}<br>%{y} recipe(s)<br><br>%{customdata}<extra></extra>",
+        }],
+        "layout": {
+            "title": "Total time (prep + cook)",
+            "yaxis": {"title": "Recipes", "gridcolor": "rgba(0,0,0,.1)"},
+            "margin": {"l": 50, "r": 20, "t": 40, "b": 50},
+            "height": 300,
+            "template": "plotly_white",
+        },
+    }
+    return JsonResponse(fig, safe=False)
 
 # 3) This week's MealPlan entries
 def week_entries(request):
@@ -82,6 +121,7 @@ def week_entries(request):
         "mealprepped/entries_week.html",
         {"entries": entries, "start": start, "end": end},
     )
+
 
 class MealPlanDetailView(View):
     def get(self, request, primary_key):
@@ -105,6 +145,7 @@ class MealPlanListView(ListView):
 class RecipeDetailView(DetailView):
     model = Recipe
     context_object_name = "recipe"
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["ingredients"] = (
