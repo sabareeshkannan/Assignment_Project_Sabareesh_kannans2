@@ -1,16 +1,32 @@
 {% extends "base.html" %}
 {% block title %}This Week — MealPrepped{% endblock %}
+{% block page_title %}Week plan{% endblock %}
+{% block page_subtitle %}{{ start }} to {{ end }}{% endblock %}
+
 {% block content %}
-  <h2>Week Plan ({{ start }} → {{ end }})</h2>
-  <ul>
-    {% for e in entries %}
-      <li>
-        {{ e.date }} — {{ e.meal_type|title }}
-        {% if e.recipe %}→ <strong>{{ e.recipe.title }}</strong>{% else %}→ <em>TBD</em>{% endif %}
-        <span style="color:#666">({{ e.meal_plan.name }})</span>
-      </li>
-    {% empty %}
-      <li>No entries for this week yet.</li>
-    {% endfor %}
-  </ul>
+    {% if entries %}
+        <ul class="list-group list-group-flush">
+            {% for e in entries %}
+                <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center">
+                    <div class="me-3">
+                        <strong class="me-2">{{ e.date }}</strong>
+                        <span class="badge text-bg-primary me-2">{{ e.meal_type|title }}</span>
+                        {% if e.recipe %}
+                            <a href="{% url 'mealprepped:recipe_detail' e.recipe.pk %}" class="link-primary">
+                                {{ e.recipe.title }}
+                            </a>
+                        {% else %}
+                            <em class="text-muted">TBD</em>
+                        {% endif %}
+                    </div>
+                    <span class="text-muted small">{{ e.meal_plan.name }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="sheet p-5 text-center">
+            <h2 class="h6 mb-2">No entries for this week</h2>
+            <p class="text-muted mb-0">Add entries from a meal plan to populate this view.</p>
+        </div>
+    {% endif %}
 {% endblock %}
