@@ -44,7 +44,10 @@ Implemented four CBVs and refactored URLs for modularity.
 - **RecipeListView (ListView)**: Search over `title`/`description` with `{% for %}…{% empty %}` for the no-results case.  
 - **Stats**: Total recipes, **Most-used recipes** , and **Recipes by ingredient count**   
 
+### Static Files + Charts
 
+- Custom CSS files were linked in `base.html` to apply a consistent site theme using Material Design for Bootstrap. 
+- A Plotly chart that shows recipe counts by **total time (prep + cook)** in four fixed intervals (≤15, 16–30, 31–45, 46–60 minutes) was also added, to provide users with an overview of the relative meal preparation time.
 
 
 
