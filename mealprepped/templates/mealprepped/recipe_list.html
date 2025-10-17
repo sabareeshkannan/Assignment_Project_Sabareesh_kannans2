@@ -1,62 +1,170 @@
 {% extends "base.html" %}
 {% block title %}Recipes — MealPrepped{% endblock %}
+{% block page_title %}Recipes{% endblock %}
+{% block page_subtitle %}Browse all recipes, search by name or description, and see quick stats.{% endblock %}
+
 {% block content %}
-  <h2>Recipes</h2>
 
-  <form method="get">
-    <input type="search" name="q" value="{{ q }}" placeholder="Name or description…">
-    <button type="submit">Search</button>
-  </form>
+    <!-- Search -->
+    <section class="mb-4">
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="d-flex align-items-end gap-2">
+                    <div class="form-outline w-100" data-mdb-input-init>
+                        <input type="search" name="q" id="q" class="form-control" value="{{ q|default:'' }}"/>
+                        <label class="form-label" for="q">Search recipes…</label>
+                    </div>
+                    <button type="submit" class="btn btn-brand" data-mdb-ripple-init>
+                        <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">search</span>
+                        Search
+                    </button>
+                </form>
+                {% if q %}
+                    <p class="text-muted small mb-0 mt-2">
+                        <em>{{ results_count }} result{% if results_count != 1 %}s{% endif %} for “{{ q }}”.</em>
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
 
-{% if q %}
-  <p><em>{{ results_count }} result{% if results_count != 1 %}s{% endif %} for “{{ q }}”.</em></p>
-  <ul>
-    {% for r in search_results %}
-      <li><a href="{% url 'mealprepped:recipe_detail' r.pk %}">{{ r.title }}</a></li>
-    {% empty %}
-      <li class="text-muted">No recipes matched “{{ q }}”.</li>
-    {% endfor %}
-  </ul>
-{% endif %}
+    <!-- Search results -->
+    {% if q %}
+        <section class="mb-4">
+            {% if search_results %}
+                <ul class="list-group list-group-flush">
+                    {% for r in search_results %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <a href="{% url 'mealprepped:recipe_detail' r.pk %}" class="link-primary">{{ r.title }}</a>
+                            <span class="material-symbols-rounded text-muted" aria-hidden="true">chevron_right</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="sheet p-4 text-center text-muted">No recipes matched “{{ q }}”.</div>
+            {% endif %}
+        </section>
+    {% endif %}
 
-  <hr>
-  <ul>
-    {% for r in recipes %}
-      <li>
-        <a href="{% url 'mealprepped:recipe_detail' r.pk %}"><strong>{{ r.title }}</strong></a>
-        — Servings: {{ r.servings }}
-        — Prep {{ r.prep_minutes }}m / Cook {{ r.cook_minutes }}m
-      </li>
-    {% empty %}
-      <li>No recipes yet. Add some in Admin → Recipes.</li>
-    {% endfor %}
-  </ul>
+    <!-- All recipes -->
+    <section class="mb-4">
+        <h3 class="h5 mb-3">All recipes</h3>
+        {% if recipes %}
+            <div class="row g-4">
+                {% for r in recipes %}
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <article class="card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <h4 class="h6 card-title mb-1">{{ r.title }}</h4>
+                                <p class="text-muted small mb-3">
+                                    <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">group</span>
+                                    Servings: {{ r.servings|default:"—" }}
+                                    <span class="text-muted"> · </span>
+                                    <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">schedule</span>
+                                    Prep {{ r.prep_minutes|default:"—" }}m / Cook {{ r.cook_minutes|default:"—" }}m
+                                </p>
+                                <div class="mb-2">
+                                    {% if r.servings %}<span class="pill">Serves {{ r.servings }}</span>{% endif %}
+                                </div>
+                                <div class="mt-auto">
+                                    <a href="{% url 'mealprepped:recipe_detail' r.pk %}"
+                                       class="btn btn-outline-primary" data-mdb-ripple-init>View</a>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="sheet p-5 text-center">
+                <h4 class="h6 mb-2">No recipes yet</h4>
+            </div>
+        {% endif %}
+    </section>
 
-  <hr>
-    <p><strong>Total recipes:</strong> {{ total_recipes }}</p>
+    <!-- Quick stats -->
+    <section class="row g-4">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <p class="mb-3"><strong>Total recipes:</strong> {{ total_recipes }}</p>
+                    <h6 class="mb-2">Hover to view recipes</h6>
+                    <div id="plotly-total-time" style="min-height:300px"></div>
 
-  <h4>Most used recipes (in meal plans)</h4>
-  <ul>
-    {% for row in top_used_recipes %}
-      <li>
-        <a href="{% url 'mealprepped:recipe_detail' row.recipe__pk %}">{{ row.recipe__title }}</a>
-        — {{ row.n_uses }}
-      </li>
-    {% empty %}
-      <li>No usage yet.</li>
-    {% endfor %}
-  </ul>
+                    <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+                    <script>
+                        (function () {
+                            const mount = document.getElementById('plotly-total-time');
+                            if (!mount) return;
 
-    <h4>Recipes by ingredient count</h4>
-<ul>
-  {% for row in recipes_by_ingredient_count %}
-    <li>
-      <a href="{% url 'mealprepped:recipe_detail' row.recipe__pk %}">{{ row.recipe__title }}</a>
-      — {{ row.n_ings }} ingredients
-    </li>
-  {% empty %}<li>No data yet.</li>{% endfor %}
-</ul>
+                            fetch("{% url 'mealprepped:total_time_chart' %}", { credentials: 'same-origin' })
+                                .then(res => res.json())
+                                .then(fig => {
+                                    Plotly.newPlot(mount, fig.data, fig.layout, {
+                                        responsive: true,
+                                        displayModeBar: false
+                                    });
+                                })
+                                .catch(() => {
+                                    mount.textContent = "Chart failed to load.";
+                                });
+                        })();
+                    </script>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="h6 mb-3">Most used recipes (in meal plans)</h5>
+                    {% if top_used_recipes %}
+                        <ul class="list-group list-group-flush">
+                            {% for row in top_used_recipes|slice:":5" %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {% if row.recipe__pk %}
+                                        {% url 'mealprepped:recipe_detail' row.recipe__pk as most_url %}
+                                        <a href="{{ most_url }}" class="link-primary">{{ row.recipe__title }}</a>
+                                    {% else %}
+                                        <span class="text-muted">[deleted]</span>
+                                    {% endif %}
+                                    <span class="badge text-bg-primary">{{ row.n_uses }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No usage yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="h6 mb-3">Recipes by ingredient count</h5>
+                    {% if recipes_by_ingredient_count %}
+                        <ul class="list-group list-group-flush">
+                            {% for row in recipes_by_ingredient_count %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {% if row.recipe__pk %}
+                                        {% url 'mealprepped:recipe_detail' row.recipe__pk as by_ing_url %}
+                                        <a href="{{ by_ing_url }}" class="link-primary">{{ row.recipe__title }}</a>
+                                    {% else %}
+                                        <span class="text-muted">[deleted]</span>
+                                    {% endif %}
+                                    <span class="badge text-bg-secondary">{{ row.n_ings }} ingredients</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No data yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
 
 {% endblock %}
-
-
