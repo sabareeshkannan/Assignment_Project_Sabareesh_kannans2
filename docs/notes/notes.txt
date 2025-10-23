@@ -182,3 +182,15 @@ What ORM aggregation was used? I annotatd each recipe with total = prep_minutes 
 
 BytesIO: It helps to save Matplotlib plot png file to BytesIO (as PNG) and returns it in an HttpResponse without writing any files to diskm and therefore not taking up space in your local disk.
 tight_layout(): It is a helper method that adjusts margins so titles, axes, and labels are not misaligned
+
+# Forms, GET vs POST, and Function-Based vs Class-Based Views  (A8)
+CSRF: A token inserted into POST forms to prevent requests from unauthorised sources. Django verifies it on submit.
+
+Form submission flow: Render empty form (GET) → submit (POST) -> validate (form.is_valid()) -> If invalid re-render with errors, else if valid save or you are also able to redirect to another page.
+
+GET vs POST: GET for safe, idempotent reads and replicable results by anybody with the link. POST for creates or updates that should stored in the backend, protected by CSRF.
+
+FBV pros: Explicit control path, easy to customise multiple branches. 
+Cons: More boilerplate code, and more cases where bugs can be made.
+CBV pros: Less boilerplate code via due to presets like CreateView.
+Cons: May be harder to understand the logic, due to a high level of abstraction and the majority of work being done by the preset template.
