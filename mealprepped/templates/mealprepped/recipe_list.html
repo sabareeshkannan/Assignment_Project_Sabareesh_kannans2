@@ -2,7 +2,6 @@
 {% block title %}Recipes — MealPrepped{% endblock %}
 {% block page_title %}Recipes{% endblock %}
 {% block page_subtitle %}Browse all recipes, search by name or description, and see quick stats.{% endblock %}
-
 {% block content %}
 
     <!-- Search -->
@@ -10,12 +9,13 @@
         <div class="card">
             <div class="card-body">
                 <form method="get" class="d-flex align-items-end gap-2">
-                    <div class="form-outline w-100" data-mdb-input-init>
-                        <input type="search" name="q" id="q" class="form-control" value="{{ q|default:'' }}"/>
-                        <label class="form-label" for="q">Search recipes…</label>
+                    <div class="form-floating w-100" data-mdb-input-init>
+                        {{ form.q }}
+                        <label for="{{ form.q.id_for_label }}">Search recipes…</label>
                     </div>
-                    <button type="submit" class="btn btn-brand" data-mdb-ripple-init>
-                        <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">search</span>
+                    <button type="submit" class="btn btn-brand">
+                            <span class="material-symbols-rounded align-text-bottom me-1"
+                                  aria-hidden="true">search</span>
                         Search
                     </button>
                 </form>
@@ -45,6 +45,14 @@
             {% endif %}
         </section>
     {% endif %}
+
+    <!-- Add Recipe -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h4 mb-0">Recipes</h1>
+        <div class="btn-group">
+            <a href="{% url 'mealprepped:recipe_create_cbv' %}" class="btn btn-outline-primary">Add Recipe</a>
+        </div>
+    </div>
 
     <!-- All recipes -->
     <section class="mb-4">
@@ -97,7 +105,7 @@
                             const mount = document.getElementById('plotly-total-time');
                             if (!mount) return;
 
-                            fetch("{% url 'mealprepped:total_time_chart' %}", { credentials: 'same-origin' })
+                            fetch("{% url 'mealprepped:total_time_chart' %}", {credentials: 'same-origin'})
                                 .then(res => res.json())
                                 .then(fig => {
                                     Plotly.newPlot(mount, fig.data, fig.layout, {
