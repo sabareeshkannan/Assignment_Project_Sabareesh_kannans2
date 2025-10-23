@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Add Recipe{% endblock %}
+
+{% block content %}
+    <div class="container py-4">
+        <h2 class="mb-3">Add Recipe</h2>
+
+        {% for m in messages %}
+            <div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <label class="form-label" for="{{ form.title.id_for_label }}">Title</label>
+            <input class="form-control" id="{{ form.title.id_for_label }}" name="{{ form.title.name }}"
+                   value="{{ form.title.value|default_if_none:'' }}" autocomplete="off">
+            {{ form.title.errors }}
+
+            <div class="mb-3">
+                <label class="form-label" for="{{ form.description.id_for_label }}">Description</label>
+                <textarea class="form-control" id="{{ form.description.id_for_label }}"
+                          name="{{ form.description.name }}"
+                          rows="4">{{ form.description.value|default_if_none:'' }}</textarea>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.servings.id_for_label }}">Servings</label>
+                    <input type="number" min="1" class="form-control" id="{{ form.servings.id_for_label }}"
+                           name="{{ form.servings.name }}" value="{{ form.servings.value|default_if_none:'' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.prep_minutes.id_for_label }}">Prep (min)</label>
+                    <input type="number" min="0" class="form-control" id="{{ form.prep_minutes.id_for_label }}"
+                           name="{{ form.prep_minutes.name }}" value="{{ form.prep_minutes.value|default_if_none:'' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.cook_minutes.id_for_label }}">Cook (min)</label>
+                    <input type="number" min="0" class="form-control" id="{{ form.cook_minutes.id_for_label }}"
+                           name="{{ form.cook_minutes.name }}" value="{{ form.cook_minutes.value|default_if_none:'' }}">
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <button class="btn btn-primary">Save</button>
+                <a href="{% url 'mealprepped:recipes_list' %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
