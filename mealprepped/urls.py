@@ -17,4 +17,8 @@ urlpatterns = [
     path("recipes/add-fbv/", views.recipe_create_fbv, name="recipe_create_fbv"),
     path("recipes/add-cbv/", views.RecipeCreateView.as_view(), name="recipe_create_cbv"),
     path("recipe/<int:pk>/ingredients/", views.manage_recipe_ingredients, name="manage_recipe_ingredients"),
+    path("api/mealplans/status/", views.api_mealplans_complete, name="api-mealplans-complete"),
+    path("charts/mealplans/fill.png", views.mealplans_pie_png, name="mealplans-pie-png"),
+    path("demo/mealplans/fill.txt", views.mealplans_fill_text, name="mealplans-fill-text"),
+    path("demo/mealplans/fill.json", views.mealplans_fill_json, name="mealplans-fill-json"),
 ]
