@@ -1,13 +1,21 @@
 # mealprepped/views.py
 
 from datetime import date, timedelta
+import io
+import json
+from urllib.request import urlopen
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 from django.contrib import messages
 from django.db.models import Count, F, Q
 from django.http import HttpResponse, JsonResponse
 from django.template import loader
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView
 
@@ -145,6 +153,18 @@ class MealPlanListView(ListView):
     paginate_by = 10
     ordering = ["-created_at"]
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        qs = MealPlan.objects.annotate(n_entries=Count("entries"))
+        total = qs.count()
+        filled = qs.filter(n_entries__gt=0).count()
+        unfilled = max(total - filled, 0)
+
+        ctx["total_mealplans"] = total
+        ctx["filled_mealplans"] = filled
+        ctx["unfilled_mealplans"] = unfilled
+        return ctx
+
 
 class RecipeDetailView(DetailView):
     model = Recipe
@@ -237,3 +257,80 @@ def manage_recipe_ingredients(request, pk):
         "items": items,
         "form": form,
     })
+
+def api_mealplans_complete(request):
+    qs = (MealPlan.objects.annotate(
+        covered=Count("entries__date",
+            distinct=True,
+            filter=Q(
+                entries__date__gte=F("start_date"),
+                entries__date__lte=F("end_date"),
+            ),
+        )
+    ).values("mealplan_id", "covered"))
+
+    total = 0
+    complete = 0
+    for row in qs:
+        total += 1
+        if row["covered"] >= 7:
+            complete += 1
+
+    unfilled = max(total - complete, 0)
+
+    return JsonResponse({
+        "total": total,
+        "complete": complete,
+        "unfilled": unfilled,
+        "results": [
+            {"status": "complete", "n": complete},
+            {"status": "unfilled", "n": unfilled},
+        ],
+    })
+
+
+def mealplans_pie_png(request):
+    api_url = request.build_absolute_uri(reverse("mealprepped:api-mealplans-complete"))
+    with urlopen(api_url) as resp:
+        payload = json.load(resp)
+
+    complete = next((r["n"] for r in payload.get("results", []) if r["status"] == "complete"), 0)
+    unfilled = next((r["n"] for r in payload.get("results", []) if r["status"] == "unfilled"), 0)
+    total = complete + unfilled
+
+    fig, ax = plt.subplots()
+
+    if total == 0:
+        ax.pie([1], labels=["No plans"], colors=["#e5e7eb"], startangle=90)
+    else:
+        ax.pie(
+            [complete, unfilled],
+            labels=["Complete", "Unfilled"],
+            colors=["#0F766E", "#DC2626"],
+            startangle=90,
+            autopct=lambda p: f"{int(round(p * total / 100.0))}",
+        )
+
+    ax.set_aspect("equal")
+    ax.set_title("Meal Plans: Filled vs Unfilled")
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    return HttpResponse(buf.getvalue(), content_type="image/png")
+
+
+def mealplans_fill_text(request):
+    qs = MealPlan.objects.annotate(n=Count("entries"))
+    total = qs.count()
+    filled = qs.filter(n__gt=0).count()
+    unfilled = max(total - filled, 0)
+    return HttpResponse(f"total={total}, filled={filled}, unfilled={unfilled}", content_type="text/plain")
+
+
+def mealplans_fill_json(request):
+    qs = MealPlan.objects.annotate(n=Count("entries"))
+    total = qs.count()
+    filled = qs.filter(n__gt=0).count()
+    unfilled = max(total - filled, 0)
+    return JsonResponse({"total": total, "filled": filled, "unfilled": unfilled})
