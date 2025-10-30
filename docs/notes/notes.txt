@@ -194,3 +194,24 @@ FBV pros: Explicit control path, easy to customise multiple branches.
 Cons: More boilerplate code, and more cases where bugs can be made.
 CBV pros: Less boilerplate code via due to presets like CreateView.
 Cons: May be harder to understand the logic, due to a high level of abstraction and the majority of work being done by the preset template.
+
+# APIs + JSON Endpoints + Chart Integration (A9)
+
+What is a JSON API
+A JSON API is an HTTP endpoint that returns machine-readable data in JSON format rather than HTML.
+It has a stable structure, so clients know which keys to read. Example for this project: /api/mealplans/status/ returns totals and a results list with {"status": "...", "n": ...}.
+
+HttpResponse vs JsonResponse
+JsonResponse converts a Python dict to JSON and sets Content-Type: application/json automatically.
+HttpResponse returns the bytes and you set the Content-Type yourself.
+In this project the API uses JsonResponse. The chart view uses HttpResponse with image/png.
+
+What the chart shows and how data flows from API to chart view
+Chart: a pie showing Meal Plans that are completely filled versus unfilled. Completely filled means the plan has entries on all seven days within that week's window
+  1) Server builds the absolute API URL with build_absolute_uri(reverse(...)).
+  2) Server fetches JSON using urllib.request.urlopen and parses it with json.load.
+  3) View extracts the counts for "complete" and "unfilled".
+  4) Matplotlib renders a pie as PNG.
+  5) View returns HttpResponse with content_type="image/png".
+  6) Template embeds the PNG via the HTML file.
+
