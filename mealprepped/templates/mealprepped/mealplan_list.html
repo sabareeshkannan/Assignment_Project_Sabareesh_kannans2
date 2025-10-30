@@ -4,6 +4,28 @@
 {% block page_subtitle %}Browse, open, and manage existing plans{% endblock %}
 
 {% block content %}
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-12 col-lg-8">
+                    <img
+                            src="{% url 'mealprepped:mealplans-pie-png' %}"
+                            alt="Bar chart of filled vs unfilled meal plans"
+                            class="img-fluid border rounded"
+                    >
+                </div>
+                <div class="col-12 col-lg-4 mt-3 mt-lg-0">
+                    <ul class="list-unstyled small mb-0">
+                        <li class="mb-1"><strong>Total:</strong> {{ total_mealplans|default:"—" }}</li>
+                        <li class="mb-1"><strong>Filled:</strong> {{ filled_mealplans|default:"—" }}</li>
+                        <li class="mb-1"><strong>Unfilled:</strong> {{ unfilled_mealplans|default:"—" }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
     {% if mealplans %}
         <div class="row g-4">
             {% for mp in mealplans %}
@@ -16,8 +38,8 @@
                                 {{ mp.start_date }} to {{ mp.end_date }}
                             </p>
                             <div class="mt-auto">
-                                <a href="{% url 'mealprepped:mealplan_detail' mp.pk %}" class="btn btn-brand"
-                                   data-mdb-ripple-init>
+                                <a href="{% url 'mealprepped:mealplan_detail' mp.pk %}"
+                                   class="btn btn-brand" data-mdb-ripple-init>
                                     Open plan
                                 </a>
                             </div>
@@ -31,13 +53,16 @@
             <nav aria-label="Meal plan pages" class="mt-4">
                 <ul class="pagination justify-content-center">
                     {% if page_obj.has_previous %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
                         </li>
                     {% endif %}
-                    <li class="page-item disabled"><span
-                            class="page-link">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span></li>
+                    <li class="page-item disabled">
+                        <span class="page-link">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+                    </li>
                     {% if page_obj.has_next %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -46,6 +71,8 @@
     {% else %}
         <div class="sheet p-5 text-center">
             <h2 class="h6 mb-2">No meal plans yet</h2>
+            <p class="text-muted">Create a meal plan to see it listed here.</p>
         </div>
     {% endif %}
+
 {% endblock %}
