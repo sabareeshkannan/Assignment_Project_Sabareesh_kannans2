@@ -57,3 +57,9 @@ Implemented four CBVs and refactored URLs for modularity.
 ### FBV vs CBV for forms
 
 - I implemented “Add Recipe” two ways. The **FBV** explicitly checks `request.method`, validates, and redirects. The **CBV** uses Django’s `CreateView` with `form_class`, `template_name`, and `success_url` (via `reverse_lazy`), reducing boilerplate while performing the same behavior.
+
+
+### APIs + JSON Endpoints
+
+- Added JSON API at GET /api/mealplans/status/ returning overall totals and results for "complete" vs "unfilled". 
+- The Meal Plans page now includes a Matplotlib pie chart, which fetches the API and returns a PNG image
