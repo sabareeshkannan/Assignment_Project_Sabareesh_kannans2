@@ -21,4 +21,5 @@ urlpatterns = [
     path("charts/mealplans/fill.png", views.mealplans_pie_png, name="mealplans-pie-png"),
     path("demo/mealplans/fill.txt", views.mealplans_fill_text, name="mealplans-fill-text"),
     path("demo/mealplans/fill.json", views.mealplans_fill_json, name="mealplans-fill-json"),
+    path("recipes/import/", views.ExternalMealSearchView.as_view(), name="external-import"),
 ]
