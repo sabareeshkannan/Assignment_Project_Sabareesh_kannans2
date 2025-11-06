@@ -215,3 +215,20 @@ Chart: a pie showing Meal Plans that are completely filled versus unfilled. Comp
   5) View returns HttpResponse with content_type="image/png".
   6) Template embeds the PNG via the HTML file.
 
+
+# External APIs (Open API / Non-Keyed) (A10)
+
+API chosen: TheMealDB. Fits my Recipes feature and returns small JSON. Endpoint: https://www.themealdb.com/api/json/v1/1/search.php?s=<query>.
+Fields extracted : idMeal, name (from strMeal), category (strCategory), area (strArea), thumb (strMealThumb). I keep only the first 9 results.
+Errors and timeouts: requests.get(..., params={"s": q}, timeout=5) with resp.raise_for_status(). Wrapped in try/except for requests.exceptions.RequestException.
+JSON mode returns {"ok": False, "error": "..."} with HTTP 502 and HTML shows a  error message.
+JSON shape:
+{
+  "ok": true,
+  "query": "chicken",
+  "count": 3,
+  "results": [
+    {"idMeal":"52795","name":"Chicken Handi","category":"Chicken","area":"Indian","thumb":"https://..."}
+  ]
+}
+When there are no matches the API returns "meals": null rather than []. It is not necessary for all fields to be fields, some can be empty and they needed to be handled accordingly.
