@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block page_title %}Find your recipes online{% endblock %}
+{% block page_subtitle %}Lazy to add your own meals? Click on a recipe below and get started{% endblock %}
+
+{% block content %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="d-flex align-items-end gap-2">
+                <div class="form-floating w-100">
+                    <input class="form-control" id="q" name="q" value="{{query}}"
+                           placeholder="Search meals">
+                    <label for="q">Search meals…</label>
+                </div>
+                <button class="btn btn-brand" type="submit">
+                    <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">search</span>
+                    Search
+                </button>
+            </form>
+            <small class="text-muted">Results are from TheMealDB API</small>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    {% if results %}
+        <div class="row g-4">
+            {% for m in results %}
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="card h-100">
+                        {% if m.thumb %}<img src="{{ m.thumb }}" class="card-img-top" alt="{{ m.name }}">{% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title mb-1">{{ m.name }}</h5>
+                            <p class="text-muted small mb-0">
+                                {% if m.category %}{{ m.category }}{% endif %}
+                                {% if m.area %}{% if m.category %} · {% endif %}{{ m.area }}{% endif %}
+                            </p>
+                        </div>
+                    </article>
+                </div>
+            {% endfor %}
+        </div>
+    {% elif not error %}
+        <p class="text-muted">No results for “{{ query }}”. Try another search.</p>
+    {% endif %}
+
+    <div class="mt-4">
+        <a class="btn btn-outline-secondary" href="{% url 'mealprepped:recipes_list' %}">Back to recipes</a>
+    </div>
+{% endblock %}
