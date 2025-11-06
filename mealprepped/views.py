@@ -4,6 +4,7 @@ from datetime import date, timedelta
 import io
 import json
 from urllib.request import urlopen
+import requests
 
 import matplotlib
 
@@ -258,15 +259,16 @@ def manage_recipe_ingredients(request, pk):
         "form": form,
     })
 
+
 def api_mealplans_complete(request):
     qs = (MealPlan.objects.annotate(
         covered=Count("entries__date",
-            distinct=True,
-            filter=Q(
-                entries__date__gte=F("start_date"),
-                entries__date__lte=F("end_date"),
-            ),
-        )
+                      distinct=True,
+                      filter=Q(
+                          entries__date__gte=F("start_date"),
+                          entries__date__lte=F("end_date"),
+                      ),
+                      )
     ).values("mealplan_id", "covered"))
 
     total = 0
@@ -334,3 +336,47 @@ def mealplans_fill_json(request):
     filled = qs.filter(n__gt=0).count()
     unfilled = max(total - filled, 0)
     return JsonResponse({"total": total, "filled": filled, "unfilled": unfilled})
+
+
+class ExternalMealSearchView(View):
+    template_name = "mealprepped/external_import.html"
+
+    def get(self, request):
+        q = (request.GET.get("q") or "").strip()
+        json_output = request.GET.get("format") == "json"
+
+        searched = bool(q)
+        results = []
+        error: str | None = None
+
+        if searched:
+            try:
+                resp = requests.get("https://www.themealdb.com/api/json/v1/1/search.php",
+                    params={"s": q},
+                    timeout=5, )
+
+                resp.raise_for_status()
+                data = resp.json() or {}
+                meals = data.get("meals")
+
+                trimmed = []
+                for m in meals[:9]:
+                    trimmed.append({
+                        "idMeal": m.get("idMeal"),
+                        "name": (m.get("strMeal") or "").strip(),
+                        "category": (m.get("strCategory") or "").strip(),
+                        "area": (m.get("strArea") or "").strip(),
+                        "thumb": (m.get("strMealThumb") or "").strip(),
+                    })
+                results = trimmed
+
+            except requests.exceptions.RequestException as e:
+                error = str(e)
+
+        if json_output:
+            if error:
+                return JsonResponse({"ok": False, "error": error}, status=502)
+            return JsonResponse({"ok": True, "query": q, "count": len(results), "results": results})
+
+        ctx = {"query": q, "searched": searched, "results": results, "error": error}
+        return render(request, self.template_name, ctx)
