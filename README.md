@@ -62,7 +62,7 @@ Implemented four CBVs and refactored URLs for modularity.
 - Added JSON API at GET /api/mealplans/status/ returning overall totals and results for "complete" vs "unfilled". 
 - The Meal Plans page now includes a Matplotlib pie chart, which fetches the API and returns a PNG image
 
-### APIs + JSON Endpoints (External Search)
+### External APIs (Open API / Non-Keyed) 
 
 - Added TheMealDB API: HTML at GET /recipes/import/?q=<term> (fields: idMeal, name, category, area, thumb, Total of 9 items for each page).
 - Uses requests.get(..., params={"s": q}, timeout=5) with raise_for_status()
