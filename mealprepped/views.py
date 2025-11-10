@@ -28,8 +28,14 @@ from django.utils.dateparse import parse_date
 from .forms import RecipeCreateForm, RecipeSearchForm, RecipeIngredientForm
 from .models import Ingredient, MealPlan, MealPlanEntry, Recipe, RecipeIngredient
 
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from .forms_auth import PublicSignUpForm
+
 
 # 1) Ingredient list
+@login_required(login_url="mealprepped:login_urlpattern")
 def ingredient_list(request):
     ingredients = Ingredient.objects.all().order_by("name")
     template = loader.get_template("mealprepped/ingredient_list.html")
@@ -37,10 +43,14 @@ def ingredient_list(request):
     return HttpResponse(output)
 
 
-class RecipeListView(ListView):
-    model = Recipe
+class RecipeListView(LoginRequiredMixin, ListView):
+    login_url = "mealprepped:login_urlpattern"
+    redirect_field_name = "next"
+
+    model = Recipe                          # <-- ensures ListView has a queryset
     template_name = "mealprepped/recipe_list.html"
     context_object_name = "recipes"
+    queryset = Recipe.objects.order_by("title")  # optional but explicit
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -49,7 +59,7 @@ class RecipeListView(ListView):
         ctx["form"] = form
         q = ""
         if form.is_valid():
-            q = (form.cleaned_data.get("q")).strip()
+            q = (form.cleaned_data.get("q") or "").strip()
 
         ctx["q"] = q
         ctx["search_results"] = (
@@ -77,9 +87,7 @@ class RecipeListView(ListView):
 
     def render_to_response(self, context, **response_kwargs):
         if (self.request.GET.get("format") or "").lower() == "json":
-            results_qs = context.get("search_results")
-            if results_qs is None:
-                results_qs = Recipe.objects.order_by("-created_at", "title")
+            results_qs = context.get("search_results") or Recipe.objects.order_by("-created_at", "title")
             data = {
                 "ok": True,
                 "results": [{"id": r.pk, "title": r.title} for r in results_qs[:20]],
@@ -88,6 +96,7 @@ class RecipeListView(ListView):
         return super().render_to_response(context, **response_kwargs)
 
 
+@login_required(login_url="mealprepped:login_urlpattern")
 def total_time_chart(request):
     data = Recipe.objects.annotate(total=F("prep_minutes") + F("cook_minutes"))
 
@@ -137,6 +146,7 @@ def total_time_chart(request):
 
 
 # 3) This week's MealPlan entries
+@login_required(login_url="mealprepped:login_urlpattern")
 def week_entries(request):
     start = date.today()
     end = start + timedelta(days=6)
@@ -153,9 +163,10 @@ def week_entries(request):
     )
 
 
-class MealPlanDetailView(View):
+class MealPlanDetailView(LoginRequiredMixin, View):
+    login_url = "mealprepped:login_urlpattern"
+    redirect_field_name = "next"
     template_name = "mealprepped/mealplan_detail.html"
-
     def _calendar(self, mp, entries):
         days = []
         if mp.start_date and mp.end_date and mp.end_date >= mp.start_date:
@@ -251,18 +262,19 @@ class MealPlanDetailView(View):
         messages.success(request, f"Added “{recipe.title}” on {d.strftime('%b %d')} ({meal_type}).")
         return redirect(request.path + f"#d-{d.isoformat()}")
 
+from django.db.models import ExpressionWrapper, DurationField
 
-class MealPlanListView(ListView):
+class MealPlanListView(LoginRequiredMixin, ListView):
+    login_url = "mealprepped:login_urlpattern"
+    redirect_field_name = "next"
     model = MealPlan
     context_object_name = "mealplans"
     paginate_by = 10
-
     def get_queryset(self):
         qs = (
             MealPlan.objects
             .annotate(
                 n_entries=Count("entries"),
-                # Distinct covered calendar days within plan range
                 covered_days=Count(
                     "entries__date",
                     distinct=True,
@@ -274,7 +286,6 @@ class MealPlanListView(ListView):
             )
         )
 
-        # Search by name
         q = (self.request.GET.get("q") or "").strip()
         if q:
             qs = qs.filter(name__icontains=q)
@@ -285,7 +296,7 @@ class MealPlanListView(ListView):
         elif status == "filled":
             qs = qs.filter(n_entries__gt=0)
         elif status == "complete":
-            qs = qs.filter(covered_days__gte=7)
+            qs = qs.filter(covered_days=7)
         elif status == "inprogress":
             qs = qs.filter(n_entries__gt=0, covered_days__lt=7)
 
@@ -302,25 +313,50 @@ class MealPlanListView(ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        all_qs = MealPlan.objects.annotate(n=Count("entries"))
-        total = all_qs.count()
-        filled = all_qs.filter(n__gt=0).count()
-        unfilled = max(total - filled, 0)
+        base = MealPlan.objects.annotate(
+            n=Count("entries"),
+            covered_days=Count(
+                "entries__date",
+                distinct=True,
+                filter=Q(
+                    entries__date__gte=F("start_date"),
+                    entries__date__lte=F("end_date"),
+                ),
+            ),
+        ).values("start_date", "end_date", "n", "covered_days")
 
-        ctx["total_mealplans"] = total
-        ctx["filled_mealplans"] = filled
-        ctx["unfilled_mealplans"] = unfilled
+        total = base.count()
+        complete = 0
+        for row in base:
+            sd, ed = row["start_date"], row["end_date"]
+            if sd and ed:
+                total_days = (ed - sd).days + 1  # inclusive
+                if total_days == 7 and row["covered_days"] == 7:
+                    complete += 1
+
+        filled_any = sum(1 for row in base if row["n"] > 0)
+        inprogress = max(filled_any - complete, 0)
+        unfilled = max(total - filled_any, 0)
+
+        ctx.update({
+            "total_mealplans": total,
+            "complete_mealplans": complete,
+            "inprogress_mealplans": inprogress,
+            "filled_mealplans": filled_any,
+            "unfilled_mealplans": unfilled,
+        })
 
         for mp in ctx["mealplans"]:
-            total_days = 0
             if mp.start_date and mp.end_date:
                 total_days = (mp.end_date - mp.start_date).days + 1
+            else:
+                total_days = 0
             mp.total_days = total_days
 
             covered = getattr(mp, "covered_days", 0) or 0
             mp.coverage_pct = int(round(100 * covered / total_days)) if total_days else 0
 
-            if total_days and mp.coverage_pct >= 100:
+            if total_days == 7 and covered == 7:
                 mp.status_label = "Complete"
                 mp.status_css = "success"
             elif mp.n_entries > 0:
@@ -330,14 +366,16 @@ class MealPlanListView(ListView):
                 mp.status_label = "Empty"
                 mp.status_css = "secondary"
 
+        # Preserve controls (unchanged)
         ctx["q"] = (self.request.GET.get("q") or "").strip()
         ctx["status"] = (self.request.GET.get("status") or "").strip()
         ctx["sort"] = (self.request.GET.get("sort") or "new").strip()
-
         return ctx
 
 
-class RecipeDetailView(DetailView):
+class RecipeDetailView(LoginRequiredMixin, DetailView):
+    login_url = "mealprepped:login_urlpattern"
+    redirect_field_name = "next"
     model = Recipe
     context_object_name = "recipe"
 
@@ -352,7 +390,9 @@ class RecipeDetailView(DetailView):
         return ctx
 
 
-class IngredientDetailView(View):
+class IngredientDetailView(LoginRequiredMixin, View):
+    login_url = "mealprepped:login_urlpattern"
+    redirect_field_name = "next"
     def get(self, request, primary_key):
         ingredient = get_object_or_404(Ingredient, pk=primary_key)
         recipes = (
@@ -372,6 +412,7 @@ class IngredientDetailView(View):
 
 
 # FBV
+@login_required(login_url="mealprepped:login_urlpattern")
 def recipe_create_fbv(request):
     if request.method == "POST":
         form = RecipeCreateForm(request.POST)
@@ -385,7 +426,9 @@ def recipe_create_fbv(request):
 
 
 # CBV
-class RecipeCreateView(CreateView):
+class RecipeCreateView(LoginRequiredMixin, CreateView):
+    login_url = "mealprepped:login_urlpattern"
+    redirect_field_name = "next"
     model = Recipe
     form_class = RecipeCreateForm
     template_name = "mealprepped/recipe_form.html"
@@ -402,6 +445,7 @@ class RecipeCreateView(CreateView):
         )
 
 
+@login_required(login_url="mealprepped:login_urlpattern")
 def manage_recipe_ingredients(request, pk):
     recipe = get_object_or_404(Recipe, pk=pk)
     items = (RecipeIngredient.objects
@@ -430,6 +474,7 @@ def manage_recipe_ingredients(request, pk):
     })
 
 
+@login_required(login_url="mealprepped:login_urlpattern")
 def api_mealplans_complete(request):
     qs = (MealPlan.objects.annotate(
         covered=Count("entries__date",
@@ -461,6 +506,7 @@ def api_mealplans_complete(request):
     })
 
 
+@login_required(login_url="mealprepped:login_urlpattern")
 def mealplans_pie_png(request):
     api_url = request.build_absolute_uri(reverse("mealprepped:api-mealplans-complete"))
     with urlopen(api_url) as resp:
@@ -492,6 +538,7 @@ def mealplans_pie_png(request):
     return HttpResponse(buf.getvalue(), content_type="image/png")
 
 
+@login_required(login_url="mealprepped:login_urlpattern")
 def mealplans_fill_text(request):
     qs = MealPlan.objects.annotate(n=Count("entries"))
     total = qs.count()
@@ -500,6 +547,7 @@ def mealplans_fill_text(request):
     return HttpResponse(f"total={total}, filled={filled}, unfilled={unfilled}", content_type="text/plain")
 
 
+@login_required(login_url="mealprepped:login_urlpattern")
 def mealplans_fill_json(request):
     qs = MealPlan.objects.annotate(n=Count("entries"))
     total = qs.count()
@@ -526,10 +574,11 @@ def _parse_measure(s: str) -> Tuple[Optional[float], str]:
         return float(m.group(1)), m.group(2).strip()
     return None, s
 
-
 MEALDB_SEARCH_URL = "https://www.themealdb.com/api/json/v1/1/search.php"
 
-class ExternalMealSearchView(ListView):
+class ExternalMealSearchView(LoginRequiredMixin, ListView):
+    login_url = "mealprepped:login_urlpattern"
+    redirect_field_name = "next"
     template_name = "mealprepped/external_import.html"
     context_object_name = "results"
     paginate_by = 9
@@ -646,6 +695,7 @@ class ExternalMealSearchView(ListView):
         return redirect(f"{request.path}?q={q}&page={page}")
 
 
+@login_required(login_url="mealprepped:login_urlpattern")
 def export_mealplans_csv(request):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     filename = f"mealplans_{timestamp}.csv"
@@ -669,6 +719,7 @@ def export_mealplans_csv(request):
     return response
 
 
+@login_required(login_url="mealprepped:login_urlpattern")
 def export_mealplans_json(request):
     qs = (MealPlan.objects
           .annotate(
@@ -690,3 +741,20 @@ def export_mealplans_json(request):
     filename = f"mealplans_{timestamp}.json"
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+def signup_view(request):
+    if request.method == "POST":
+        form = PublicSignUpForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            if user.is_staff or user.is_superuser:
+                user.is_staff = False
+                user.is_superuser = False
+                user.save(update_fields=["is_staff", "is_superuser"])
+            login(request, user)
+            return redirect("mealprepped:mealplans_list")
+    else:
+        form = PublicSignUpForm()
+    return render(request, "mealprepped/signup.html", {"form": form})
+
