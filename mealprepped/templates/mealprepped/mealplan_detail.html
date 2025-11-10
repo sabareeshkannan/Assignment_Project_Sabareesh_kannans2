@@ -6,38 +6,43 @@
 
 {% block content %}
 <style>
-  .meal-cell{min-height:220px}.meal-cell .entries{max-height:120px;overflow:auto}
+  .meal-cell{min-height:220px}
+  .meal-cell .entries{max-height:120px;overflow:auto}
   .meal-title{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .btn-bar{display:flex;gap:.5rem;justify-content:flex-start;flex-wrap:wrap}
-  @media (min-width:992px){.btn-bar{justify-content:flex-end}}
-  .results-box{max-height:240px;overflow:auto;border:1px solid rgba(0,0,0,.1);border-radius:.5rem;padding:.5rem}
-
   .meal-line{display:flex;align-items:center;gap:.375rem;min-width:0}
   .meal-line .badge{flex:0 0 auto}
   .meal-line .title{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .results-box{max-height:240px;overflow:auto;border:1px solid rgba(0,0,0,.1);border-radius:.5rem;padding:.5rem}
 </style>
 
 {% if messages %}
-  {% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }} mb-2">{{ m }}</div>{% endfor %}
+  {% for m in messages %}
+    <div class="alert alert-{{ m.tags|default:'info' }} mb-2" role="alert">{{ m }}</div>
+  {% endfor %}
 {% endif %}
 
 <section class="mb-4">
-  <div class="card card-accent">
+  <div class="card">
     <div class="card-body">
       <div class="row g-3 align-items-center">
         <div class="col-12 col-lg-7">
           <div class="small text-muted mb-1">Plan coverage</div>
-          <div class="progress" style="height:8px"><div class="progress-bar" role="progressbar" style="width:{{ coverage_pct }}%"></div></div>
-          <div class="small text-muted mt-1">{{ coverage_pct }}% · {{ covered_days }}{% if total_days %} / {{ total_days }}{% endif %} days covered</div>
+          <div class="progress" style="height:8px" role="progressbar"
+               aria-valuenow="{{ coverage_pct|default:0 }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar" style="width: {{ coverage_pct|default:0 }}%"></div>
+          </div>
+          <div class="small text-muted mt-1">
+            {{ coverage_pct|default:0 }}% · {{ covered_days }}{% if total_days %} / {{ total_days }}{% endif %} days covered
+          </div>
         </div>
         <div class="col-12 col-lg-5">
-          <div class="btn-bar">
+          <div class="d-flex justify-content-lg-end flex-wrap gap-2">
             {% url 'mealprepped:mealplan_list' as list_url %}
             <a href="{{ request.META.HTTP_REFERER|default:list_url }}" class="btn btn-outline-secondary">
-              <span class="material-symbols-rounded align-text-bottom me-1">arrow_back</span> Back
+              Back
             </a>
-            <a href="?add=1#add-panel" class="btn btn-brand">
-              <span class="material-symbols-rounded align-text-bottom me-1">add</span> Add entry
+            <a href="?add=1#add-panel" class="btn btn-primary">
+              Add entry
             </a>
           </div>
         </div>
@@ -53,6 +58,7 @@
       <h3 class="h6 mb-0">Add from existing recipes</h3>
       <a class="btn btn-sm btn-outline-secondary" href="{{ request.path }}">Close</a>
     </div>
+
     <div class="row g-3">
       <div class="col-12 col-xl-4">
         <form method="post" action="{{ request.path }}" class="card h-100">
@@ -61,8 +67,9 @@
             <div class="mb-3">
               <label class="form-label" for="id_date">Date</label>
               <input id="id_date" type="date" name="date" class="form-control"
-                     value="{{ prefill_date }}" required>
+                     value="{{ prefill_date|default:request.GET.date }}" required>
             </div>
+
             <div class="mb-3">
               <label class="form-label" for="id_meal_type">Meal type</label>
               <select id="id_meal_type" name="meal_type" class="form-select" required>
@@ -71,6 +78,7 @@
                 {% endfor %}
               </select>
             </div>
+
             <fieldset class="mb-3">
               <legend id="legend-choose-recipe" class="form-label mb-2">Choose recipe</legend>
               <div class="results-box" role="radiogroup" aria-labelledby="legend-choose-recipe">
@@ -87,9 +95,8 @@
                 {% endif %}
               </div>
             </fieldset>
-            <button type="submit" class="btn btn-brand w-100">
-              <span class="material-symbols-rounded align-text-bottom me-1">save</span> Add
-            </button>
+
+            <button type="submit" class="btn btn-primary w-100">Add</button>
           </div>
         </form>
       </div>
@@ -102,15 +109,17 @@
               {% if prefill_date %}<input type="hidden" name="date" value="{{ prefill_date }}">{% endif %}
               <label class="form-label" for="id_q">Search recipes</label>
               <div class="input-group">
-                <span class="input-group-text material-symbols-rounded" aria-hidden="true">search</span>
+                <span class="input-group-text" aria-hidden="true">🔎</span>
                 <input id="id_q" type="text" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="e.g., chicken">
-                <button class="btn btn-outline-secondary">Search</button>
+                <button class="btn btn-outline-secondary" type="submit">Search</button>
               </div>
               <div class="form-text">Results appear in the chooser on the left.</div>
             </form>
 
             {% if recipe_search_results %}
-              <div class="small text-muted mb-2">{{ recipe_search_results|length }} result{{ recipe_search_results|length|pluralize }}</div>
+              <div class="small text-muted mb-2">
+                {{ recipe_search_results|length }} result{{ recipe_search_results|length|pluralize }}
+              </div>
               <ul class="mb-0">
                 {% for r in recipe_search_results|slice:":10" %}
                   <li class="mb-1">{{ r.title }}</li>
@@ -133,20 +142,24 @@
     {% if weeks %}
       {% for wk in weeks %}
         <div class="mb-3">
-          <div class="small text-muted mb-2">Week {{ forloop.counter }} · {{ wk.start|date:"M j" }} – {{ wk.end|date:"M j" }}</div>
+          <div class="small text-muted mb-2">
+            Week {{ forloop.counter }} · {{ wk.start|date:"M j" }} – {{ wk.end|date:"M j" }}
+          </div>
           <div class="row row-cols-2 row-cols-md-4 row-cols-lg-7 g-3">
             {% for d in wk.days %}
               <div class="col">
                 <article class="card meal-cell h-100" id="d-{{ d.date|date:'Y-m-d' }}">
                   <div class="card-body p-2 d-flex flex-column">
                     <div class="d-flex justify-content-between small text-muted">
-                      <strong>{{ d.date|date:"D" }}</strong><span>{{ d.date|date:"M j" }}</span>
+                      <strong>{{ d.date|date:"D" }}</strong>
+                      <span>{{ d.date|date:"M j" }}</span>
                     </div>
+
                     <ul class="list-unstyled mt-2 mb-2 entries flex-grow-1">
                       {% for e in d.entries %}
                         <li class="mb-1">
                           <div class="meal-line">
-                            <span class="badge bg-light border text-body small">
+                            <span class="badge bg-secondary-subtle text-secondary border">
                               {{ e.get_meal_type_display|default:e.meal_type|capfirst }}
                             </span>
                             {% if e.recipe %}
@@ -161,9 +174,10 @@
                         <li class="text-muted small fst-italic">No entries</li>
                       {% endfor %}
                     </ul>
+
                     <a class="btn btn-sm btn-outline-secondary w-100"
                        href="?add=1&date={{ d.date|date:'Y-m-d' }}#add-panel">
-                      <span class="material-symbols-rounded align-text-bottom me-1">add_circle</span> Add
+                      Add
                     </a>
                   </div>
                 </article>
@@ -173,7 +187,9 @@
         </div>
       {% endfor %}
     {% else %}
-      <div class="sheet p-4 text-center text-muted">No date range set for this meal plan.</div>
+      <div class="alert alert-light text-center text-muted mb-0">
+        No date range set for this meal plan.
+      </div>
     {% endif %}
   </div>
 
@@ -181,16 +197,33 @@
     <div class="card mb-3">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center">
-          <div><div class="small text-muted">Entries</div><div class="h5 mb-0">{{ total_entries }}</div></div>
-          <span class="material-symbols-rounded">list_alt</span>
-        </div><hr>
+          <div>
+            <div class="small text-muted">Entries</div>
+            <div class="h5 mb-0">
+              <span class="badge bg-primary">{{ total_entries }}</span>
+            </div>
+          </div>
+          <span aria-hidden="true">📋</span>
+        </div>
+        <hr>
         <div class="d-flex justify-content-between align-items-center">
-          <div><div class="small text-muted">Covered days</div><div class="h5 mb-0">{{ covered_days }}</div></div>
-          <span class="material-symbols-rounded">calendar_month</span>
-        </div><hr>
+          <div>
+            <div class="small text-muted">Covered days</div>
+            <div class="h5 mb-0">
+              <span class="badge bg-success">{{ covered_days }}</span>
+            </div>
+          </div>
+          <span aria-hidden="true">🗓️</span>
+        </div>
+        <hr>
         <div class="d-flex justify-content-between align-items-center">
-          <div><div class="small text-muted">Unique recipes</div><div class="h5 mb-0">{{ unique_recipes_count }}</div></div>
-          <span class="material-symbols-rounded">restaurant</span>
+          <div>
+            <div class="small text-muted">Unique recipes</div>
+            <div class="h5 mb-0">
+              <span class="badge bg-info text-dark">{{ unique_recipes_count }}</span>
+            </div>
+          </div>
+          <span aria-hidden="true">🍽️</span>
         </div>
       </div>
     </div>
@@ -213,14 +246,10 @@
 
     <div class="d-flex gap-2">
       {% if prev_plan %}
-        <a class="btn btn-outline-secondary" href="{% url 'mealprepped:mealplan_detail' prev_plan.pk %}">
-          <span class="material-symbols-rounded align-text-bottom me-1">chevron_left</span> Prev
-        </a>
+        <a class="btn btn-outline-secondary" href="{% url 'mealprepped:mealplan_detail' prev_plan.pk %}">Prev</a>
       {% endif %}
       {% if next_plan %}
-        <a class="btn btn-outline-secondary" href="{% url 'mealprepped:mealplan_detail' next_plan.pk %}">
-          Next <span class="material-symbols-rounded align-text-bottom ms-1">chevron_right</span>
-        </a>
+        <a class="btn btn-outline-secondary" href="{% url 'mealprepped:mealplan_detail' next_plan.pk %}">Next</a>
       {% endif %}
     </div>
   </aside>
