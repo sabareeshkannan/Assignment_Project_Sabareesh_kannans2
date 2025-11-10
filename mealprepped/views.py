@@ -4,21 +4,26 @@ from datetime import date, timedelta
 import io
 import json
 from urllib.request import urlopen
-import requests
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from collections import defaultdict
+from typing import Optional, Tuple, List, Dict, Any
+import re, requests
+
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Count, F, Q
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.template import loader
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView
+from django.utils.dateparse import parse_date
 
 from .forms import RecipeCreateForm, RecipeSearchForm, RecipeIngredientForm
 from .models import Ingredient, MealPlan, MealPlanEntry, Recipe, RecipeIngredient
@@ -69,6 +74,18 @@ class RecipeListView(ListView):
             .order_by("-n_ings", "recipe__title")
         )
         return ctx
+
+    def render_to_response(self, context, **response_kwargs):
+        if (self.request.GET.get("format") or "").lower() == "json":
+            results_qs = context.get("search_results")
+            if results_qs is None:
+                results_qs = Recipe.objects.order_by("-created_at", "title")
+            data = {
+                "ok": True,
+                "results": [{"id": r.pk, "title": r.title} for r in results_qs[:20]],
+            }
+            return JsonResponse(data)
+        return super().render_to_response(context, **response_kwargs)
 
 
 def total_time_chart(request):
@@ -137,33 +154,186 @@ def week_entries(request):
 
 
 class MealPlanDetailView(View):
+    template_name = "mealprepped/mealplan_detail.html"
+
+    def _calendar(self, mp, entries):
+        days = []
+        if mp.start_date and mp.end_date and mp.end_date >= mp.start_date:
+            span = (mp.end_date - mp.start_date).days + 1
+            days = [mp.start_date + timedelta(days=i) for i in range(span)]
+        by_date = defaultdict(list)
+        for e in entries:
+            if e.date:
+                by_date[e.date].append(e)
+        covered = sum(1 for d in days if by_date.get(d))
+        pct = int(round(100 * covered / len(days))) if days else 0
+        weeks = [{
+            "start": days[i],
+            "end": days[min(i + 6, len(days) - 1)],
+            "days": [{"date": d, "entries": by_date.get(d, [])} for d in days[i:i + 7]],
+        } for i in range(0, len(days), 7)]
+        return weeks, covered, len(days), pct
+
     def get(self, request, pk):
-        mealplan = get_object_or_404(MealPlan, pk=pk)
+        mp = get_object_or_404(MealPlan, pk=pk)
         entries = (MealPlanEntry.objects
-                   .select_related("recipe", "meal_plan")
-                   .filter(meal_plan=mealplan)
-                   .order_by("date", "meal_type"))
-        return render(request, "mealprepped/mealplan_detail.html", {
-            "mealplan": mealplan, "entries": entries, "total_entries": entries.count(),
-        })
+                   .select_related("recipe")
+                   .filter(meal_plan=mp)
+                   .order_by("date", "meal_type", "pk"))
+
+        weeks, covered, total_days, pct = self._calendar(mp, entries)
+
+        top_recipes = (MealPlanEntry.objects
+        .filter(meal_plan=mp, recipe__isnull=False)
+        .values("recipe__pk", "recipe__title")
+        .annotate(n=Count("pk"))
+        .order_by("-n", "recipe__title")[:5])
+        prev_plan = MealPlan.objects.filter(pk__lt=mp.pk).order_by("-pk").first()
+        next_plan = MealPlan.objects.filter(pk__gt=mp.pk).order_by("pk").first()
+
+        recipe_results = None
+        if request.GET.get("add"):
+            q = (request.GET.get("q") or "").strip()
+            if q:
+                recipe_results = (Recipe.objects
+                .filter(Q(title__icontains=q) | Q(description__icontains=q))
+                .order_by("title")[:25])
+            else:
+                recipe_results = (Recipe.objects
+                .order_by("-created_at", "title")[:25])
+
+        prefill_date = request.GET.get("date")
+        if not prefill_date and mp.start_date:
+            prefill_date = mp.start_date.strftime("%Y-%m-%d")
+
+        ctx = {
+            "mealplan": mp,
+            "entries": entries,
+            "total_entries": entries.count(),
+            "weeks": weeks,
+            "covered_days": covered,
+            "total_days": total_days,
+            "coverage_pct": pct,
+            "unique_recipes_count": entries.exclude(recipe=None).values("recipe_id").distinct().count(),
+            "top_recipes": top_recipes,
+            "prev_plan": prev_plan,
+            "next_plan": next_plan,
+            "meal_type_choices": MealPlanEntry._meta.get_field("meal_type").choices,
+            "recipe_search_results": recipe_results,
+            "prefill_date": prefill_date,  # <-- used by template; always an ISO string
+        }
+        return render(request, self.template_name, ctx)
+
+    def post(self, request, pk):
+        mp = get_object_or_404(MealPlan, pk=pk)
+        d = parse_date((request.POST.get("date") or "").strip())
+        meal_type = (request.POST.get("meal_type") or "").strip()
+        rid = request.POST.get("recipe_id")
+
+        if not d:
+            messages.error(request, "Please choose a valid date.")
+            return redirect(request.path + "#add-panel")
+        if (mp.start_date and d < mp.start_date) or (mp.end_date and d > mp.end_date):
+            messages.error(request, "Date is outside this plan.")
+            return redirect(request.path + f"#d-{d.isoformat()}")
+
+        try:
+            recipe = Recipe.objects.get(pk=int(rid))
+        except Exception:
+            messages.error(request, "Please select a recipe.")
+            return redirect(request.path + "#add-panel")
+
+        if not meal_type:
+            messages.error(request, "Please pick a meal type.")
+            return redirect(request.path + "#add-panel")
+
+        MealPlanEntry.objects.create(meal_plan=mp, date=d, meal_type=meal_type, recipe=recipe)
+        messages.success(request, f"Added “{recipe.title}” on {d.strftime('%b %d')} ({meal_type}).")
+        return redirect(request.path + f"#d-{d.isoformat()}")
 
 
 class MealPlanListView(ListView):
     model = MealPlan
     context_object_name = "mealplans"
     paginate_by = 10
-    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        qs = (
+            MealPlan.objects
+            .annotate(
+                n_entries=Count("entries"),
+                # Distinct covered calendar days within plan range
+                covered_days=Count(
+                    "entries__date",
+                    distinct=True,
+                    filter=Q(
+                        entries__date__gte=F("start_date"),
+                        entries__date__lte=F("end_date"),
+                    ),
+                ),
+            )
+        )
+
+        # Search by name
+        q = (self.request.GET.get("q") or "").strip()
+        if q:
+            qs = qs.filter(name__icontains=q)
+
+        status = (self.request.GET.get("status") or "").strip()
+        if status == "empty":
+            qs = qs.filter(n_entries=0)
+        elif status == "filled":
+            qs = qs.filter(n_entries__gt=0)
+        elif status == "complete":
+            qs = qs.filter(covered_days__gte=7)
+        elif status == "inprogress":
+            qs = qs.filter(n_entries__gt=0, covered_days__lt=7)
+
+        # Sorting
+        sort = (self.request.GET.get("sort") or "new").strip()
+        if sort == "name":
+            qs = qs.order_by("name", "-mealplan_id")
+        elif sort == "old":
+            qs = qs.order_by("created_at", "mealplan_id")
+        else:  # "new"
+            qs = qs.order_by("-created_at", "-mealplan_id")
+
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        qs = MealPlan.objects.annotate(n_entries=Count("entries"))
-        total = qs.count()
-        filled = qs.filter(n_entries__gt=0).count()
+        all_qs = MealPlan.objects.annotate(n=Count("entries"))
+        total = all_qs.count()
+        filled = all_qs.filter(n__gt=0).count()
         unfilled = max(total - filled, 0)
 
         ctx["total_mealplans"] = total
         ctx["filled_mealplans"] = filled
         ctx["unfilled_mealplans"] = unfilled
+
+        for mp in ctx["mealplans"]:
+            total_days = 0
+            if mp.start_date and mp.end_date:
+                total_days = (mp.end_date - mp.start_date).days + 1
+            mp.total_days = total_days
+
+            covered = getattr(mp, "covered_days", 0) or 0
+            mp.coverage_pct = int(round(100 * covered / total_days)) if total_days else 0
+
+            if total_days and mp.coverage_pct >= 100:
+                mp.status_label = "Complete"
+                mp.status_css = "success"
+            elif mp.n_entries > 0:
+                mp.status_label = "In progress"
+                mp.status_css = "info"
+            else:
+                mp.status_label = "Empty"
+                mp.status_css = "secondary"
+
+        ctx["q"] = (self.request.GET.get("q") or "").strip()
+        ctx["status"] = (self.request.GET.get("status") or "").strip()
+        ctx["sort"] = (self.request.GET.get("sort") or "new").strip()
+
         return ctx
 
 
@@ -338,45 +508,139 @@ def mealplans_fill_json(request):
     return JsonResponse({"total": total, "filled": filled, "unfilled": unfilled})
 
 
-class ExternalMealSearchView(View):
+def _parse_measure(s: str) -> Tuple[Optional[float], str]:
+    s = (s or "").strip()
+    if not s:
+        return None, ""
+    m = re.match(r"^\s*(\d+)\s+(\d+/\d+)\s*(.*)$", s)  # 1 1/2 cup
+    if m:
+        whole = float(m.group(1));
+        a, b = m.group(2).split("/")
+        return whole + float(a) / float(b), m.group(3).strip()
+    m = re.match(r"^\s*(\d+/\d+)\s*(.*)$", s)  # 3/4 tsp
+    if m:
+        a, b = m.group(1).split("/")
+        return float(a) / float(b), m.group(2).strip()
+    m = re.match(r"^\s*(\d+(?:\.\d+)?)\s*(.*)$", s)  # 2.5 tbsp, 2 cloves
+    if m:
+        return float(m.group(1)), m.group(2).strip()
+    return None, s
+
+
+MEALDB_SEARCH_URL = "https://www.themealdb.com/api/json/v1/1/search.php"
+
+class ExternalMealSearchView(ListView):
     template_name = "mealprepped/external_import.html"
+    context_object_name = "results"
+    paginate_by = 9
 
-    def get(self, request):
-        q = (request.GET.get("q") or "").strip()
-        json_output = request.GET.get("format") == "json"
+    q: str = ""
+    error: Optional[str] = None
 
-        searched = bool(q)
-        results = []
-        error: str | None = None
+    def get_queryset(self) -> List[Dict[str, Any]]:
+        self.q = (self.request.GET.get("q") or "").strip()
+        self.error = None
+        if not self.q:
+            return []
+        try:
+            r = requests.get(MEALDB_SEARCH_URL, params={"s": self.q}, timeout=5)
+            r.raise_for_status()
+            meals = (r.json() or {}).get("meals") or []
+        except (requests.exceptions.RequestException, ValueError) as e:
+            self.error = str(e)
+            return []
 
-        if searched:
-            try:
-                resp = requests.get("https://www.themealdb.com/api/json/v1/1/search.php",
-                    params={"s": q},
-                    timeout=5, )
+        return [{
+            "idMeal": m.get("idMeal"),
+            "name": (m.get("strMeal") or "").strip(),
+            "category": (m.get("strCategory") or "").strip(),
+            "area": (m.get("strArea") or "").strip(),
+            "thumb": (m.get("strMealThumb") or "").strip(),
+        } for m in meals]
 
-                resp.raise_for_status()
-                data = resp.json() or {}
-                meals = data.get("meals")
+    def get_context_data(self, **kwargs) -> Dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        paginator = ctx.get("paginator")
+        page_obj = ctx.get("page_obj")
+        ctx.update({
+            "query": self.q,
+            "searched": bool(self.q),
+            "error": self.error,
+        })
+        if paginator and page_obj:
+            ctx.update({
+                "page": page_obj.number,
+                "num_pages": paginator.num_pages,
+                "pages": list(paginator.page_range),
+                "has_prev": page_obj.has_previous(),
+                "has_next": page_obj.has_next(),
+                "prev_page": page_obj.previous_page_number() if page_obj.has_previous() else 1,
+                "next_page": page_obj.next_page_number() if page_obj.has_next() else paginator.num_pages,
+            })
+        else:
+            ctx.update({
+                "page": 1, "num_pages": 0, "pages": [],
+                "has_prev": False, "has_next": False,
+                "prev_page": 1, "next_page": 1,
+            })
+        return ctx
 
-                trimmed = []
-                for m in meals[:9]:
-                    trimmed.append({
-                        "idMeal": m.get("idMeal"),
-                        "name": (m.get("strMeal") or "").strip(),
-                        "category": (m.get("strCategory") or "").strip(),
-                        "area": (m.get("strArea") or "").strip(),
-                        "thumb": (m.get("strMealThumb") or "").strip(),
-                    })
-                results = trimmed
+    def post(self, request: HttpRequest) -> HttpResponse:
+        id_meal = (request.POST.get("idMeal") or "").strip()
+        q = (request.POST.get("q") or "").strip()
+        page = request.POST.get("page") or "1"
+        if not (id_meal and q):
+            messages.error(request, "Try again.")
+            return redirect(f"{request.path}?q={q}&page={page}")
 
-            except requests.exceptions.RequestException as e:
-                error = str(e)
+        try:
+            r = requests.get(MEALDB_SEARCH_URL, params={"s": q}, timeout=5)
+            r.raise_for_status()
+            meals = (r.json() or {}).get("meals") or []
+            m = next((x for x in meals if x.get("idMeal") == id_meal), None)
+            if not m:
+                messages.error(request, "Recipe not found.")
+                return redirect(f"{request.path}?q={q}&page={page}")
 
-        if json_output:
-            if error:
-                return JsonResponse({"ok": False, "error": error}, status=502)
-            return JsonResponse({"ok": True, "query": q, "count": len(results), "results": results})
+            title = (m.get("strMeal") or "").strip()
+            desc = (m.get("strInstructions") or "").strip()
 
-        ctx = {"query": q, "searched": searched, "results": results, "error": error}
-        return render(request, self.template_name, ctx)
+            with transaction.atomic():
+                recipe, _ = Recipe.objects.get_or_create(title=title, defaults={"description": desc})
+                if hasattr(recipe, "description") and not recipe.description and desc:
+                    recipe.description = desc
+                    recipe.save()
+
+                item_mgr = getattr(recipe, "items", None)
+                if item_mgr:
+                    link_model = item_mgr.model
+                    for i in range(1, 21):
+                        name = (m.get(f"strIngredient{i}") or "").strip()
+                        meas = (m.get(f"strMeasure{i}") or "").strip()
+                        if not name:
+                            continue
+                        qty, unit = _parse_measure(meas)
+                        ing = Ingredient.objects.filter(name__iexact=name).first() or Ingredient(name=name)
+                        if hasattr(ing, "unit") and unit and not getattr(ing, "unit"):
+                            ing.unit = unit
+                        ing.save()
+
+                        kwargs = {"ingredient": ing}
+                        defaults = {}
+                        if hasattr(link_model, "quantity"):
+                            defaults["quantity"] = qty if qty is not None else 1
+                        if hasattr(link_model, "unit") and unit:
+                            defaults["unit"] = unit
+                        obj, created = item_mgr.get_or_create(**kwargs, defaults=defaults)
+                        if not created and hasattr(obj, "quantity") and qty is not None:
+                            obj.quantity = qty
+                            if hasattr(obj, "unit") and unit:
+                                obj.unit = unit
+                            obj.save()
+
+            name_for_msg = getattr(recipe, "title", None) or title
+            messages.success(request, f'Added “{name_for_msg}”')
+        except (requests.exceptions.RequestException, ValueError) as e:
+            messages.error(request, f"Import failed: {e}")
+
+        return redirect(f"{request.path}?q={q}&page={page}")
