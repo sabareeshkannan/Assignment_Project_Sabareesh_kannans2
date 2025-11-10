@@ -1,6 +1,7 @@
 # mealprepped/urls.py
 from django.urls import path
 from . import views
+from django.contrib.auth.views import LoginView,LogoutView
 
 app_name = "mealprepped"
 
@@ -24,4 +25,8 @@ urlpatterns = [
     path("recipes/import/", views.ExternalMealSearchView.as_view(), name="external-import"),
     path("export/mealplans.csv", views.export_mealplans_csv, name="export_mealplans_csv"),
     path("export/mealplans.json", views.export_mealplans_json, name="export_mealplans_json"),
+    path("login/", LoginView.as_view(template_name="mealprepped/login.html"), name="login_urlpattern"),
+    path("logout/", LogoutView.as_view(),
+         name="logout_urlpattern"),
+    path("signup/", views.signup_view, name="signup_urlpattern"),
 ]
