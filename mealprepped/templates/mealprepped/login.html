@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 420px;">
+  <h2 class="mb-3 text-center">Log in</h2>
+
+  {% if form.errors %}
+    <div class="alert alert-danger" role="alert">Please correct the errors below.</div>
+  {% endif %}
+
+  <form method="post" class="card p-3 shadow-sm">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="d-grid mt-2">
+      <button type="submit" class="btn btn-primary">Log In</button>
+    </div>
+  </form>
+
+  <p class="text-center mt-3">
+    Don’t have an account?
+    <a href="{% url 'mealprepped:signup_urlpattern' %}" class="text-decoration-none">Sign Up</a>
+  </p>
+</div>
+{% endblock %}
