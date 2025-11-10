@@ -1,6 +1,6 @@
 # mealprepped/views.py
-
-from datetime import date, timedelta
+import csv
+from datetime import date, timedelta, datetime
 import io
 import json
 from urllib.request import urlopen
@@ -644,3 +644,49 @@ class ExternalMealSearchView(ListView):
             messages.error(request, f"Import failed: {e}")
 
         return redirect(f"{request.path}?q={q}&page={page}")
+
+
+def export_mealplans_csv(request):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    filename = f"mealplans_{timestamp}.csv"
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+
+    writer.writerow(["mealplan_id", "name", "start_date", "end_date", "n_entries", "n_days"])
+
+    qs = (MealPlan.objects
+          .annotate(
+              n_entries=Count("entries"),
+              n_days=Count("entries__date", distinct=True),
+          )
+          .order_by("start_date", "mealplan_id"))
+
+    for mp in qs.values_list("mealplan_id", "name", "start_date", "end_date", "n_entries", "n_days"):
+        writer.writerow(mp)
+
+    return response
+
+
+def export_mealplans_json(request):
+    qs = (MealPlan.objects
+          .annotate(
+              n_entries=Count("entries"),
+              n_days=Count("entries__date", distinct=True),
+          )
+          .order_by("start_date", "mealplan_id"))
+
+    data = list(qs.values("mealplan_id", "name", "start_date", "end_date", "n_entries", "n_days"))
+
+    payload = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "record_count": len(data),
+        "mealplans": data,
+    }
+    response = JsonResponse(payload, json_dumps_params={"indent": 2})
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    filename = f"mealplans_{timestamp}.json"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
