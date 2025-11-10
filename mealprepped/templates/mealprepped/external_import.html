@@ -1,51 +1,89 @@
 {% extends "base.html" %}
+
 {% block page_title %}Find your recipes online{% endblock %}
 {% block page_subtitle %}Lazy to add your own meals? Click on a recipe below and get started{% endblock %}
 
 {% block content %}
-    <div class="card mb-3">
-        <div class="card-body">
-            <form method="get" class="d-flex align-items-end gap-2">
-                <div class="form-floating w-100">
-                    <input class="form-control" id="q" name="q" value="{{query}}"
-                           placeholder="Search meals">
-                    <label for="q">Search meals…</label>
-                </div>
-                <button class="btn btn-brand" type="submit">
-                    <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">search</span>
-                    Search
-                </button>
-            </form>
-            <small class="text-muted">Results are from TheMealDB API</small>
+  <div class="card mb-3">
+    <div class="card-body">
+      <form method="get" class="d-flex align-items-end gap-2">
+        <div class="form-floating w-100">
+          <input class="form-control" id="q" name="q" value="{{ query }}" placeholder="Search meals">
+          <label for="q">Search meals…</label>
         </div>
+        <button class="btn btn-brand" type="submit">
+          <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">search</span>
+          Search
+        </button>
+      </form>
+      <small class="text-muted">Results are from TheMealDB API</small>
+    </div>
+  </div>
+
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  {% if results %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+      {% for m in results %}
+        <div class="col">
+          <form method="post" action="{% url 'mealprepped:external-import' %}">
+            {% csrf_token %}
+            <input type="hidden" name="idMeal" value="{{ m.idMeal }}">
+            <input type="hidden" name="q" value="{{ query }}">
+            <input type="hidden" name="page" value="{{ page }}">
+
+            <article class="card h-100 position-relative">
+              {% if m.thumb %}
+                <img src="{{ m.thumb }}" class="card-img-top" alt="{{ m.name }}" style="aspect-ratio:16/9; object-fit:cover;">
+              {% endif %}
+              <div class="card-body">
+                <h5 class="card-title mb-1">{{ m.name }}</h5>
+                <p class="text-muted small mb-0">
+                  {% if m.category %}{{ m.category }}{% endif %}
+                  {% if m.area %}{% if m.category %} · {% endif %}{{ m.area }}{% endif %}
+                </p>
+              </div>
+
+              <!-- Whole card click submits the form -->
+              <button type="submit"
+                      class="stretched-link position-absolute top-0 start-0 w-100 h-100 border-0 bg-transparent p-0"
+                      aria-label="Import {{ m.name }}"></button>
+            </article>
+          </form>
+        </div>
+      {% endfor %}
     </div>
 
-    {% if error %}
-        <div class="alert alert-danger">{{ error }}</div>
+    {% if num_pages > 1 %}
+      <nav aria-label="Search pagination" class="mt-3">
+        <ul class="pagination justify-content-center">
+          <li class="page-item {% if not has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{% url 'mealprepped:external-import' %}?q={{ query|urlencode }}&page={{ prev_page }}">Previous</a>
+          </li>
+          {% for p in pages %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+              <a class="page-link" href="{% url 'mealprepped:external-import' %}?q={{ query|urlencode }}&page={{ p }}">{{ p }}</a>
+            </li>
+          {% endfor %}
+          <li class="page-item {% if not has_next %}disabled{% endif %}">
+            <a class="page-link" href="{% url 'mealprepped:external-import' %}?q={{ query|urlencode }}&page={{ next_page }}">Next</a>
+          </li>
+        </ul>
+      </nav>
     {% endif %}
+  {% endif %}
 
-    {% if results %}
-        <div class="row g-4">
-            {% for m in results %}
-                <div class="col-12 col-md-6 col-lg-4">
-                    <article class="card h-100">
-                        {% if m.thumb %}<img src="{{ m.thumb }}" class="card-img-top" alt="{{ m.name }}">{% endif %}
-                        <div class="card-body">
-                            <h5 class="card-title mb-1">{{ m.name }}</h5>
-                            <p class="text-muted small mb-0">
-                                {% if m.category %}{{ m.category }}{% endif %}
-                                {% if m.area %}{% if m.category %} · {% endif %}{{ m.area }}{% endif %}
-                            </p>
-                        </div>
-                    </article>
-                </div>
-            {% endfor %}
-        </div>
-    {% elif not error %}
-        <p class="text-muted">No results for “{{ query }}”. Try another search.</p>
-    {% endif %}
+  <div class="mt-4">
+    <a class="btn btn-outline-secondary" href="{% url 'mealprepped:recipes_list' %}">Back to recipes</a>
+  </div>
 
-    <div class="mt-4">
-        <a class="btn btn-outline-secondary" href="{% url 'mealprepped:recipes_list' %}">Back to recipes</a>
+  {% if messages %}
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080;">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} py-1 px-2 mb-2 small shadow-sm">{{ message }}</div>
+      {% endfor %}
     </div>
+  {% endif %}
 {% endblock %}
