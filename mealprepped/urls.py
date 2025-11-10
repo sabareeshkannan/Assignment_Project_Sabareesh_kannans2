@@ -22,4 +22,6 @@ urlpatterns = [
     path("demo/mealplans/fill.txt", views.mealplans_fill_text, name="mealplans-fill-text"),
     path("demo/mealplans/fill.json", views.mealplans_fill_json, name="mealplans-fill-json"),
     path("recipes/import/", views.ExternalMealSearchView.as_view(), name="external-import"),
+    path("export/mealplans.csv", views.export_mealplans_csv, name="export_mealplans_csv"),
+    path("export/mealplans.json", views.export_mealplans_json, name="export_mealplans_json"),
 ]
