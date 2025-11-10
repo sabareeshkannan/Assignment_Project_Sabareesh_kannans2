@@ -15,7 +15,7 @@ from typing import Optional, Tuple, List, Dict, Any
 import re, requests
 
 from django.contrib import messages
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Count, F, Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.template import loader
@@ -231,38 +231,66 @@ class MealPlanDetailView(LoginRequiredMixin, View):
             "next_plan": next_plan,
             "meal_type_choices": MealPlanEntry._meta.get_field("meal_type").choices,
             "recipe_search_results": recipe_results,
-            "prefill_date": prefill_date,  # <-- used by template; always an ISO string
+            "prefill_date": prefill_date,
         }
         return render(request, self.template_name, ctx)
 
     def post(self, request, pk):
         mp = get_object_or_404(MealPlan, pk=pk)
+        detail_url = reverse("mealprepped:mealplan_detail", args=[mp.pk])
+
         d = parse_date((request.POST.get("date") or "").strip())
         meal_type = (request.POST.get("meal_type") or "").strip()
         rid = request.POST.get("recipe_id")
 
         if not d:
             messages.error(request, "Please choose a valid date.")
-            return redirect(request.path + "#add-panel")
+            return redirect(f"{detail_url}?add=1#add-panel")
+
         if (mp.start_date and d < mp.start_date) or (mp.end_date and d > mp.end_date):
             messages.error(request, "Date is outside this plan.")
-            return redirect(request.path + f"#d-{d.isoformat()}")
+            return redirect(f"{detail_url}#d-{d.isoformat()}")
 
         try:
             recipe = Recipe.objects.get(pk=int(rid))
         except Exception:
             messages.error(request, "Please select a recipe.")
-            return redirect(request.path + "#add-panel")
+            return redirect(f"{detail_url}?add=1#add-panel")
 
         if not meal_type:
             messages.error(request, "Please pick a meal type.")
-            return redirect(request.path + "#add-panel")
+            return redirect(f"{detail_url}?add=1#add-panel")
 
-        MealPlanEntry.objects.create(meal_plan=mp, date=d, meal_type=meal_type, recipe=recipe)
-        messages.success(request, f"Added “{recipe.title}” on {d.strftime('%b %d')} ({meal_type}).")
-        return redirect(request.path + f"#d-{d.isoformat()}")
+        try:
+            with transaction.atomic():
+                obj, created = MealPlanEntry.objects.update_or_create(
+                    meal_plan=mp,
+                    date=d,
+                    meal_type=meal_type,
+                    defaults={"recipe": recipe},
+                )
+        except IntegrityError:
+            obj = MealPlanEntry.objects.get(
+                meal_plan=mp, date=d, meal_type=meal_type
+            )
+            obj.recipe = recipe
+            obj.save()
+            created = False
 
-from django.db.models import ExpressionWrapper, DurationField
+        meal_label = getattr(obj, "get_meal_type_display", lambda: meal_type)().lower()
+        key = f"ADD:{mp.pk}:{d.isoformat()}:{meal_type}:{recipe.pk}"
+        if request.session.get("last_add_key") != key:
+            if created:
+                messages.success(
+                    request, f'Added “{recipe.title}” on {d:%b %d} ({meal_label}).'
+                )
+            else:
+                messages.info(
+                    request, f'Updated to “{recipe.title}” on {d:%b %d} ({meal_label}).'
+                )
+            request.session["last_add_key"] = key
+        return redirect(f"{detail_url}#d-{d.isoformat()}")
+
 
 class MealPlanListView(LoginRequiredMixin, ListView):
     login_url = "mealprepped:login_urlpattern"
