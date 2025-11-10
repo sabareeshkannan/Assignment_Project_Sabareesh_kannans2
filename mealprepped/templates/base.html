@@ -1,85 +1,176 @@
 {% load static %}
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>{% block title %}MealPrepped{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <title>{% block title %}MealPrepped{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
 
-    <link rel="stylesheet" href="{% static 'mealprepped/../mealprepped/normalize.css' %}">
-    <link rel="stylesheet" href="{% static 'mealprepped/../mealprepped/skeleton.css' %}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.min.css"/>
-    <link rel="stylesheet" href="{% static 'mealprepped/../mealprepped/style.css' %}?v={{ now|date:'U' }}">
+  <!-- CSS -->
+  <link rel="stylesheet" href="{% static 'mealprepped/normalize.css' %}">
+  <link rel="stylesheet" href="{% static 'mealprepped/skeleton.css' %}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.min.css"/>
+  <link rel="stylesheet" href="{% static 'mealprepped/style.css' %}?v={% now 'U' %}">
 
-    {% block extra_head %}{% endblock %}
+  {% block extra_head %}{% endblock %}
+  <style>
+    .container-narrow { max-width: 980px; }
+    .brand-mark { font-weight: 700; letter-spacing:.2px }
+    .bg-deepblue { background-color: #0b3d91 !important; }
+    .hero-wrap { background: linear-gradient(135deg, rgba(11,61,145,.10), rgba(25,135,84,.08)); }
+    .hero-card { backdrop-filter: saturate(140%) blur(2px); }
+    .navbar .dropdown-menu { z-index: 1100; }
+  </style>
 </head>
 
-
 <body class="bg-soft">
+<a class="visually-hidden-focusable position-absolute top-0 start-0 p-2" href="#main">Skip to content</a>
 
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg my-navbar">
-    <div class="container container-narrow">
-        <a class="navbar-brand fw-semibold" href="{% url 'mealprepped:mealplans_list' %}">MealPrepped</a>
+<nav class="navbar navbar-expand-lg navbar-dark bg-deepblue shadow-sm">
+  <div class="container container-narrow">
+    <a class="navbar-brand d-flex align-items-center brand-mark" href="{% url 'mealprepped:mealplans_list' %}">
+      <span class="material-symbols-rounded me-1" aria-hidden="true">restaurant_menu</span>
+      MealPrepped
+    </a>
 
-        <button class="navbar-toggler" type="button"
-                data-mdb-collapse-init data-mdb-target="#topnav"
-                aria-controls="topnav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="material-symbols-rounded" aria-hidden="true">menu</span>
-        </button>
+    <button class="navbar-toggler" type="button"
+            data-bs-toggle="collapse" data-bs-target="#topnav"
+            aria-controls="topnav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="material-symbols-rounded" aria-hidden="true">menu</span>
+    </button>
 
-        <div id="topnav" class="collapse navbar-collapse">
-            {% with current=request.resolver_match.url_name %}
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {% if current == 'mealplans_list' %}active{% endif %}"
-                           {% if current == 'mealplans_list' %}aria-current="page"{% endif %}
-                           href="{% url 'mealprepped:mealplans_list' %}">Meal plans</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if current == 'ingredients_list' %}active{% endif %}"
-                           {% if current == 'ingredients_list' %}aria-current="page"{% endif %}
-                           href="{% url 'mealprepped:ingredients_list' %}">Ingredients</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if current == 'recipes_list' %}active{% endif %}"
-                           {% if current == 'recipes_list' %}aria-current="page"{% endif %}
-                           href="{% url 'mealprepped:recipes_list' %}">Recipes</a>
-                    </li>
-                </ul>
-            {% endwith %}
-        </div>
+    <div id="topnav" class="collapse navbar-collapse">
+      <div class="ms-auto">
+        {% if user.is_authenticated %}
+          <form action="{% url 'mealprepped:logout_urlpattern' %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-1" type="submit">
+              <span class="material-symbols-rounded" aria-hidden="true">logout</span>
+              <span>Log Out, {{ user.get_username }}</span>
+            </button>
+          </form>
+        {% else %}
+          <a class="btn btn-sm btn-outline-light me-2 d-inline-flex align-items-center gap-1" href="{% url 'mealprepped:login_urlpattern' %}">
+            <span class="material-symbols-rounded" aria-hidden="true">login</span>
+            <span>Log In</span>
+          </a>
+          <a class="btn btn-sm btn-light text-primary fw-semibold d-inline-flex align-items-center gap-1" href="{% url 'mealprepped:signup_urlpattern' %}">
+            <span class="material-symbols-rounded" aria-hidden="true">person_add</span>
+            <span>Sign Up</span>
+          </a>
+        {% endif %}
+      </div>
     </div>
+  </div>
 </nav>
 
-<!-- Hero -->
-<header class="app-hero">
+<!-- White feature nav (only when logged in) -->
+{% if user.is_authenticated %}
+  {% with current=request.resolver_match.url_name %}
+  <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
     <div class="container container-narrow">
-        <div class="sheet p-4 p-md-5">
-            <h1 class="headline mb-2">{% block page_title %}Plan smarter. Cook better.{% endblock %}</h1>
-            <p class="subtext mb-0">{% block page_subtitle %}Browse recipes, build meal plans, and keep your ingredients
-                tidy — all in one place.{% endblock %}</p>
-        </div>
+      <button class="navbar-toggler" type="button"
+              data-bs-toggle="collapse" data-bs-target="#featureNav"
+              aria-controls="featureNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="material-symbols-rounded" aria-hidden="true">menu</span>
+      </button>
+      <div id="featureNav" class="collapse navbar-collapse">
+        <ul class="navbar-nav me-auto gap-1">
+          <li class="nav-item">
+            <a class="nav-link {% if current == 'mealplans_list' %}active{% endif %}"
+               {% if current == 'mealplans_list' %}aria-current="page"{% endif %}
+               href="{% url 'mealprepped:mealplans_list' %}">
+              <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">event_note</span>
+              Meal plans
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if current == 'ingredients_list' %}active{% endif %}"
+               {% if current == 'ingredients_list' %}aria-current="page"{% endif %}
+               href="{% url 'mealprepped:ingredients_list' %}">
+              <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">nutrition</span>
+              Ingredients
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if current == 'recipes_list' %}active{% endif %}"
+               {% if current == 'recipes_list' %}aria-current="page"{% endif %}
+               href="{% url 'mealprepped:recipes_list' %}">
+              <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">menu_book</span>
+              Recipes
+            </a>
+          </li>
+
+          <!-- Export dropdown (MealPlans only) -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-inline-flex align-items-center gap-1"
+               href="#" id="exportMenu" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">
+              <span class="material-symbols-rounded align-text-bottom" aria-hidden="true">file_download</span>
+              <span>Export</span>
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="exportMenu">
+              <li><a class="dropdown-item" href="{% url 'mealprepped:export_mealplans_csv' %}">CSV</a></li>
+              <li><a class="dropdown-item" href="{% url 'mealprepped:export_mealplans_json' %}">JSON</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
     </div>
+  </nav>
+  {% endwith %}
+{% endif %}
+
+<header class="hero-wrap py-4 py-md-5">
+  <div class="container container-narrow">
+    <div class="p-4 p-md-5 rounded-3 shadow-sm bg-white hero-card">
+      <h1 class="headline mb-2">{% block page_title %}Plan smarter. Cook better.{% endblock %}</h1>
+      <p class="subtext mb-0">
+        {% block page_subtitle %}
+          Browse recipes, build meal plans, and keep your ingredients tidy — all in one place.
+        {% endblock %}
+      </p>
+    </div>
+  </div>
 </header>
+
+{% if messages %}
+  <div class="container container-narrow mt-3">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show mb-2" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
 
 <!-- Main -->
 <main id="main" class="container container-narrow py-4">
-    {% block content %}{% endblock %}
+  {% block content %}{% endblock %}
 </main>
 
 <!-- Footer -->
 <footer class="mt-4">
-    <div class="container container-narrow">
-        <div class="sheet p-4 text-muted small d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span>© {{ now|default:None|date:"Y" }} MealPrepped</span>
-            <a class="link-secondary" href="#" onclick="window.scrollTo({top:0,behavior:'smooth'})">Back to top</a>
-        </div>
+  <div class="container container-narrow">
+    <div class="p-4 text-muted small d-flex justify-content-between align-items-center flex-wrap gap-2 border rounded-3 bg-white shadow-sm">
+      <span>© {% now "Y" %} MealPrepped</span>
+      <a class="link-secondary text-decoration-none" href="#" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+        <span class="material-symbols-rounded align-text-bottom me-1" aria-hidden="true">arrow_upward</span>
+        Back to top
+      </a>
     </div>
+  </div>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+
 {% block extra_scripts %}{% endblock %}
 </body>
 </html>
