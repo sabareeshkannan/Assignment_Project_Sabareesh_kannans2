@@ -21,7 +21,7 @@
   <div class="card">
     <div class="card-body">
       <div class="row g-3 align-items-center">
-        <div class="col-12 col-lg-7">
+        <div class="col-12">
           <div class="small text-muted mb-1">Plan coverage</div>
           <div class="progress" style="height:8px" role="progressbar"
                aria-valuenow="{{ coverage_pct|default:0 }}" aria-valuemin="0" aria-valuemax="100">
@@ -29,12 +29,6 @@
           </div>
           <div class="small text-muted mt-1">
             {{ coverage_pct|default:0 }}% · {{ covered_days }}{% if total_days %} / {{ total_days }}{% endif %} days covered
-          </div>
-        </div>
-        <div class="col-12 col-lg-5">
-          <div class="d-flex justify-content-lg-end flex-wrap gap-2">
-            <a href="{{ detail_url }}" class="btn btn-outline-secondary">Back</a>
-            <a href="{{ detail_url }}?add=1#add-panel" class="btn btn-primary">Add entry</a>
           </div>
         </div>
       </div>
