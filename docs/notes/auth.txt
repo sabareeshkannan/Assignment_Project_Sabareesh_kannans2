@@ -1,0 +1,7 @@
+# Authentication & Access Control (A11.2)
+
+- Django’s built-in LoginView and LogoutView and an additional SignupView is being created to handle the 3 scenarios (log in/out and sign up).
+- Class-based views use LoginRequiredMixin and function-based views are wrapped with @login_required.
+- The `next` parameter remembers the user’s intended destination during login/signup.
+- Login URL is set to `/login/` and LogoutView redirects to the login page by default.
+- New accounts created via signup are normal users only. The variables are set to is_staff=False, is_superuser=False.
