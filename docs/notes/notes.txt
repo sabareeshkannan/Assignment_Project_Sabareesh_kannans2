@@ -232,3 +232,11 @@ JSON shape:
   ]
 }
 When there are no matches the API returns "meals": null rather than []. It is not necessary for all fields to be filled, some can be empty and they needed to be handled accordingly.
+
+# CSV / JSON Export + Reports (A11.1)
+
+- CSV generation: Uses HttpResponse + csv.writer and set Content-Disposition to a timestamped filename.
+- JSON generation: A JsonResponse with the content and indent=2 is returned for pretty output.
+- CSV columns: mealplan_id, name, start_date, end_date, n_entries, n_days.
+- JSON fields include the above columns and also the variables for the time it was generated.
+- Meal-plan list page summaries: Total meal plans and categories seperated by (complete, in progress, filled any, empty/no_range)
