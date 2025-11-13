@@ -67,3 +67,37 @@ Implemented four CBVs and refactored URLs for modularity.
 - Added TheMealDB API: HTML at GET /recipes/import/?q=<term> (fields: idMeal, name, category, area, thumb, Total of 9 items for each page).
 - Uses requests.get(..., params={"s": q}, timeout=5) with raise_for_status()
 - Failures return {"ok": false, "error": "..."} (HTTP 502). The template displays cards or an empty page for no results. 
+
+### CSV / JSON Export + Reports
+
+- Added summary statistics for the meal plan list page and **CSV/JSON exports** functionality for meal plans.  
+- The page shows totals and grouped summaries (complete, in progress, filled, empty), plus a quick breakdown by meal type.  
+- Added seperate buttons to generate and download CSV files and pretty-printed JSON.
+
+**URLs**
+- Button location: `/mealplans-list/`
+- Export CSV: `/exports/mealplans.csv`
+- Export JSON: `/exports/mealplans.json`
+
+> All the functionalities above require login. It will redirect to the login page if not done so.
+
+### Authentication & Access Control
+
+**Protected routes**
+- `/reports/`, `/exports/mealplans.csv`, `/exports/mealplans.json`, and ALL chart/data views.
+- Class-based views use `LoginRequiredMixin`& function views use `@login_required`.
+
+**Public routes**
+- `/login/`, `/logout/`, `/signup/`
+
+**Redirects**
+- Logged-out access to protected pages redirects to `/login/?next=<target>`.
+- After login (or signup) the page redirects to the original target page.
+
+**Grading credentials**
+- Username: `mohitg2`
+- Password: `graingerlibrary`
+
+**Signup flow**
+- Built with Django’s `UserCreationForm` in a `SignupView`
+- Creates a normal user (`is_staff=False`, `is_superuser=False`) and logs in immediately, then redirects to `next` or the main page.
