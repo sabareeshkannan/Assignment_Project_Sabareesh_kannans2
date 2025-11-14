@@ -17,7 +17,7 @@ import re, requests
 from django.contrib import messages
 from django.db import transaction, IntegrityError
 from django.db.models import Count, F, Q
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse, FileResponse
 from django.template import loader
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -47,7 +47,7 @@ class RecipeListView(LoginRequiredMixin, ListView):
     login_url = "mealprepped:login_urlpattern"
     redirect_field_name = "next"
 
-    model = Recipe                          # <-- ensures ListView has a queryset
+    model = Recipe  # <-- ensures ListView has a queryset
     template_name = "mealprepped/recipe_list.html"
     context_object_name = "recipes"
     queryset = Recipe.objects.order_by("title")  # optional but explicit
@@ -167,6 +167,7 @@ class MealPlanDetailView(LoginRequiredMixin, View):
     login_url = "mealprepped:login_urlpattern"
     redirect_field_name = "next"
     template_name = "mealprepped/mealplan_detail.html"
+
     def _calendar(self, mp, entries):
         days = []
         if mp.start_date and mp.end_date and mp.end_date >= mp.start_date:
@@ -298,6 +299,7 @@ class MealPlanListView(LoginRequiredMixin, ListView):
     model = MealPlan
     context_object_name = "mealplans"
     paginate_by = 10
+
     def get_queryset(self):
         qs = (
             MealPlan.objects
@@ -421,6 +423,7 @@ class RecipeDetailView(LoginRequiredMixin, DetailView):
 class IngredientDetailView(LoginRequiredMixin, View):
     login_url = "mealprepped:login_urlpattern"
     redirect_field_name = "next"
+
     def get(self, request, primary_key):
         ingredient = get_object_or_404(Ingredient, pk=primary_key)
         recipes = (
@@ -602,7 +605,9 @@ def _parse_measure(s: str) -> Tuple[Optional[float], str]:
         return float(m.group(1)), m.group(2).strip()
     return None, s
 
+
 MEALDB_SEARCH_URL = "https://www.themealdb.com/api/json/v1/1/search.php"
+
 
 class ExternalMealSearchView(LoginRequiredMixin, ListView):
     login_url = "mealprepped:login_urlpattern"
@@ -736,9 +741,9 @@ def export_mealplans_csv(request):
 
     qs = (MealPlan.objects
           .annotate(
-              n_entries=Count("entries"),
-              n_days=Count("entries__date", distinct=True),
-          )
+        n_entries=Count("entries"),
+        n_days=Count("entries__date", distinct=True),
+    )
           .order_by("start_date", "mealplan_id"))
 
     for mp in qs.values_list("mealplan_id", "name", "start_date", "end_date", "n_entries", "n_days"):
@@ -751,9 +756,9 @@ def export_mealplans_csv(request):
 def export_mealplans_json(request):
     qs = (MealPlan.objects
           .annotate(
-              n_entries=Count("entries"),
-              n_days=Count("entries__date", distinct=True),
-          )
+        n_entries=Count("entries"),
+        n_days=Count("entries__date", distinct=True),
+    )
           .order_by("start_date", "mealplan_id"))
 
     data = list(qs.values("mealplan_id", "name", "start_date", "end_date", "n_entries", "n_days"))
@@ -786,3 +791,103 @@ def signup_view(request):
         form = PublicSignUpForm()
     return render(request, "mealprepped/signup.html", {"form": form})
 
+
+def dynamic_view(request):
+    # Get the 'q' parameter from the URL, like ?q=html, and clean it up
+    q = request.GET.get("q", "").strip().lower()
+
+    # Check if the user asked for "html"
+    if q == "html":
+        # Send back a little bit of HTML
+        return HttpResponse("<h2>Hello from HTML mode!</h2>", content_type="text/html")
+
+    # Otherwise, check if asked for "json"
+    elif q == "json":
+        # Make a simple Python dictionary
+        data = {"message": "Hello from JSON mode!", "ok": True}
+        # Send the dictionary as JSON data
+        return JsonResponse(data)
+
+    # Check for "text"
+    elif q == "text":
+        # Send back just plain, unformatted text
+        return HttpResponse("Hello from plain text mode.", content_type="text/plain")
+
+    # Check for "students"
+    elif q == "students":
+        # Make a dictionary with a list inside, like an actual API
+        data = {
+            "test": [
+                {"id": 1, "name": "Test One"},
+                {"id": 2, "name": "Test Two"},
+                {"id": 3, "name": "Test Three"},
+            ]
+        }
+        # Send that data as JSON
+        return JsonResponse(data)
+
+    # Check for "csv"
+    elif q == "csv":
+        # Create a string of comma-separated values
+        csv_data = "id,name,test\n1,VK,A\n2,MSD,A+\n3,KLR,F\n"
+        # Create a response with the CSV data
+        resp = HttpResponse(csv_data, content_type="text/csv")
+        # Tell the browser to download it as a file named "students.csv"
+        resp["Content-Disposition"] = 'attachment; filename=\"students.csv\"'
+        # Send the response
+        return resp
+
+    # Check for "xml"
+    elif q == "xml":
+        # Write a simple XML message as a string
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<message>Hello from XML mode!</message>
+"""
+        # Send the XML data
+        return HttpResponse(xml, content_type="text/xml")
+
+    # Check for "pdf"
+    elif q == "pdf":
+        # Open a PDF file in this location and display it
+        return FileResponse(open("B10/sample.pdf", "rb"),
+                           content_type="application/pdf")
+
+    # Check for "png"
+    elif q == "png":
+        # Open a PNG image file
+        return FileResponse(open("B10/sample.png", "rb"),
+                           content_type="image/png")
+
+    # Check for "mp3"
+    elif q == "mp3":
+        # Open a MP3 audio file
+        return FileResponse(open("B10/sample.mp3", "rb"),
+                           content_type="audio/mpeg")
+
+    # Check for "js"
+    elif q == "js":
+        # Write a line of JavaScript code
+        js_code = "console.log('Hello from application/javascript mode!');"
+        # Send it as a JavaScript file
+        return HttpResponse(js_code, content_type="application/javascript")
+
+
+    # If 'q' didn't match anything above, show this page
+    home_page = """
+<h2>B10 Assignment</h2>
+<p>List of formats handled:</p>
+<ul>
+  <li><code>/dynamic/?q=html</code></li>
+  <li><code>/dynamic/?q=json</code></li>
+  <li><code>/dynamic/?q=text</code></li>
+  <li><code>/dynamic/?q=students</code></li>
+  <li><code>/dynamic/?q=csv</code></li>
+  <li><code>/dynamic/?q=xml</code></li>
+  <li><code>/dynamic/?q=pdf</code></li>
+  <li><code>/dynamic/?q=png</code></li>
+  <li><code>/dynamic/?q=mp3</code></li>
+  <li><code>/dynamic/?q=js</code></li>
+</ul>
+"""
+    # Send the help page HTML
+    return HttpResponse(home_page, content_type="text/html")
