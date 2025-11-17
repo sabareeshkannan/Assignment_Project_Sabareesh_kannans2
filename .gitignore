@@ -1,5 +1,6 @@
-# Ignore Python cache files
+data/db.sqlite3
+staticfiles
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
+.venv/
+venv
