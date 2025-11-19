@@ -101,3 +101,39 @@ Implemented four CBVs and refactored URLs for modularity.
 **Signup flow**
 - Built with Django’s `UserCreationForm` in a `SignupView`
 - Creates a normal user (`is_staff=False`, `is_superuser=False`) and logs in immediately, then redirects to `next` or the main page.
+
+### Deployment 
+
+This project is deployed on PythonAnywhere at:
+
+- https://kannans2.pythonanywhere.com/  
+
+#### Settings and environments
+
+- The original `settings.py` was split into a settings package:
+  - `main/settings/base.py` – shared configuration for all environments (apps, middleware, templates, DB, static).
+  - `main/settings/development.py` – imports from `base.py`, used locally for `runserver` and development migrations.
+  - `main/settings/production.py` – imports from `base.py`, used on PythonAnywhere.
+- Locally I run Django with `DJANGO_SETTINGS_MODULE=main.settings.development`.  
+- On PythonAnywhere the WSGI file sets:
+  - `DJANGO_SETTINGS_MODULE = "main.settings.production"`  
+  - Adds `/home/kannans2/Assignment_Project_Sabareesh_kannans2` to `sys.path`.
+
+#### Deployment flow summary
+
+1. Develop locally using `main.settings.development` (DB under `main/data/db.sqlite3`).
+2. Commit and push code (excluding `db.sqlite3`) to GitHub.
+3. On PythonAnywhere, clone the repo into `/home/kannans2/Assignment_Project_Sabareesh_kannans2`.
+4. Create and activate virtualenv (`myenv-django` with Python 3.12) and run:
+   - `pip install -r main/requirements.txt`
+5. Apply migrations with production settings:
+   - `python manage.py migrate --settings=main.settings.production`
+6. Create the instructor superuser:
+   - `python manage.py createsuperuser --settings=main.settings.production`
+7. Collect static files:
+   - `python manage.py collectstatic --settings=main.settings.production`
+8. Configure the Web tab:
+   - Virtualenv: `/home/kannans2/.virtualenvs/myenv-django`
+   - Static: `/static/` → `/home/kannans2/Assignment_Project_Sabareesh_kannans2/main/staticfiles`
+   - WSGI: `DJANGO_SETTINGS_MODULE = "main.settings.production"`
+9. Reload the app on PythonAnywhere.

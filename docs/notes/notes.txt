@@ -240,3 +240,48 @@ When there are no matches the API returns "meals": null rather than []. It is no
 - CSV columns: mealplan_id, name, start_date, end_date, n_entries, n_days.
 - JSON fields include the above columns and also the variables for the time it was generated.
 - Meal-plan list page summaries: Total meal plans and categories seperated by (complete, in progress, filled any, empty/no_range)
+
+
+# Deployment notes (A12)
+
+- Settings split
+  - Single settings.py split into: main/settings/base.py, development.py, production.py.
+  - base.py: shared config (apps, middleware, templates, DB, static).
+  - dev/prod both: from .base import *.
+  - Local: DJANGO_SETTINGS_MODULE=main.settings.development.
+  - PythonAnywhere: DJANGO_SETTINGS_MODULE=main.settings.production (set in WSGI).
+
+- Database (data/ folder)
+  - BASE_DIR = Path(__file__).resolve().parent.parent → main/.
+  - DB path: BASE_DIR / "data" / "db.sqlite3"
+    → /home/kannans2/Assignment_Project_Sabareesh_kannans2/main/data/db.sqlite3 on PythonAnywhere.
+    - python manage.py migrate --settings=main.settings.production
+
+- Static files
+  - STATIC_URL = "static/"
+  - STATIC_ROOT = BASE_DIR / "staticfiles"
+  - STATICFILES_DIRS = [BASE_DIR / "static"]
+  - On PythonAnywhere:
+    - STATIC_ROOT → /home/kannans2/Assignment_Project_Sabareesh_kannans2/main/staticfiles
+    - Collect with: python manage.py collectstatic --settings=main.settings.production
+    - Web tab mapping: /static/ → /home/kannans2/Assignment_Project_Sabareesh_kannans2/main/staticfiles
+
+
+- WSGI (PythonAnywhere)
+  - /var/www/kannans2_pythonanywhere_com_wsgi.py:
+    - path = "/home/kannans2/Assignment_Project_Sabareesh_kannans2"
+      if path not in sys.path: sys.path.append(path)
+    - os.environ.setdefault("DJANGO_SETTINGS_MODULE", "main.settings.production")
+    - application = get_wsgi_application()
+
+- Deployment flow (local → GitHub → PythonAnywhere)
+  1) Local: develop with main.settings.development, DB at main/data/db.sqlite3.
+  2) git add ., git commit, git push.
+  3) On PA: git clone into /home/kannans2/Assignment_Project_Sabareesh_kannans2.
+  4) Create venv (myenv-django, Python 3.12); pip install -r main/requirements.txt.
+  5) Migrate: python manage.py migrate --settings=main.settings.production
+  6) Create superuser
+  7) Collect static: python manage.py collectstatic --settings=main.settings.production
+  8) Web tab: set virtualenv, static mapping, WSGI DJANGO_SETTINGS_MODULE.
+  9) Reload and test:
+     - https://kannans2.pythonanywhere.com/
